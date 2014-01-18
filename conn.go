@@ -358,6 +358,14 @@ func (c *Conn) Write(b []byte) (written int, err error) {
     return 0, err
 }
 
+func (c *Conn) VerifyHostname(host string) error {
+    cert, err := c.PeerCertificate()
+    if err != nil {
+        return err
+    }
+    return cert.VerifyHostname(host)
+}
+
 func (c *Conn) LocalAddr() net.Addr {
     return c.conn.LocalAddr()
 }
