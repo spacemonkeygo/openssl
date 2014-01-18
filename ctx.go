@@ -29,10 +29,10 @@ type Ctx struct {
     ctx *C.SSL_CTX
 }
 
-func NewCtx() (*Ctx, error) {
+func newCtx(method *C.SSL_METHOD) (*Ctx, error) {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
-    ctx := C.SSL_CTX_new(C.SSLv23_method())
+    ctx := C.SSL_CTX_new(method)
     if ctx == nil {
         return nil, errorFromErrorQueue()
     }
@@ -40,8 +40,42 @@ func NewCtx() (*Ctx, error) {
     runtime.SetFinalizer(c, func(c *Ctx) {
         C.SSL_CTX_free(c.ctx)
     })
-    c.SetOptions(NoSSLv2 | NoSSLv3)
     return c, nil
+}
+
+type SSLVersion int
+
+const (
+    SSLv3      SSLVersion = 0x02
+    TLSv1      SSLVersion = 0x03
+    TLSv1_1    SSLVersion = 0x04
+    TLSv1_2    SSLVersion = 0x05
+    AnyVersion SSLVersion = 0x06
+)
+
+func NewCtxWithVersion(version SSLVersion) (*Ctx, error) {
+    switch version {
+    case SSLv3:
+        return newCtx(C.SSLv3_method())
+    case TLSv1:
+        return newCtx(C.TLSv1_method())
+    case TLSv1_1:
+        return newCtx(C.TLSv1_1_method())
+    case TLSv1_2:
+        return newCtx(C.TLSv1_2_method())
+    case AnyVersion:
+        return newCtx(C.SSLv23_method())
+    default:
+        return nil, SSLError.New("unknown version")
+    }
+}
+
+func NewCtx() (*Ctx, error) {
+    c, err := NewCtxWithVersion(AnyVersion)
+    if err == nil {
+        c.SetOptions(NoSSLv2 | NoSSLv3)
+    }
+    return c, err
 }
 
 func (c *Ctx) UseCertificate(cert *Certificate) error {
@@ -78,7 +112,25 @@ func (c *Ctx) GetCertificateStore() *CertificateStore {
 func (s *CertificateStore) AddCertificate(cert *Certificate) error {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
-    if int(C.X509_STORE_add_cert(s.store, cert.x)) == 0 {
+    if int(C.X509_STORE_add_cert(s.store, cert.x)) != 1 {
+        return errorFromErrorQueue()
+    }
+    return nil
+}
+
+func (c *Ctx) LoadVerifyLocations(ca_file string, ca_path string) error {
+    runtime.LockOSThread()
+    defer runtime.UnlockOSThread()
+    var c_ca_file, c_ca_path *C.char
+    if ca_file != "" {
+        c_ca_file = C.CString(ca_file)
+        defer C.free(unsafe.Pointer(c_ca_file))
+    }
+    if ca_path != "" {
+        c_ca_path = C.CString(ca_path)
+        defer C.free(unsafe.Pointer(c_ca_path))
+    }
+    if C.SSL_CTX_load_verify_locations(c.ctx, c_ca_file, c_ca_path) != 1 {
         return errorFromErrorQueue()
     }
     return nil
@@ -87,10 +139,13 @@ func (s *CertificateStore) AddCertificate(cert *Certificate) error {
 type Options int
 
 const (
-    NoCompression Options = C.SSL_OP_NO_COMPRESSION
-    NoSSLv2               = C.SSL_OP_NO_SSLv2
-    NoSSLv3               = C.SSL_OP_NO_SSLv3
-    // TODO: fill in all the others
+    NoCompression                      Options = C.SSL_OP_NO_COMPRESSION
+    NoSSLv2                                    = C.SSL_OP_NO_SSLv2
+    NoSSLv3                                    = C.SSL_OP_NO_SSLv3
+    NoTLSv1                                    = C.SSL_OP_NO_TLSv1
+    CipherServerPreference                     = C.SSL_OP_CIPHER_SERVER_PREFERENCE
+    NoSessionResumptionOrRenegotiation         = C.SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
+    NoTicket                                   = C.SSL_OP_NO_TICKET
 )
 
 func (c *Ctx) SetOptions(options Options) Options {
@@ -102,7 +157,6 @@ type Modes int
 
 const (
     ReleaseBuffers Modes = C.SSL_MODE_RELEASE_BUFFERS
-    // TODO: fill in all the others
 )
 
 func (c *Ctx) SetMode(modes Modes) Modes {
@@ -112,14 +166,19 @@ func (c *Ctx) SetMode(modes Modes) Modes {
 type VerifyOptions int
 
 const (
-    VerifyPeer             VerifyOptions = C.SSL_VERIFY_PEER
-    VerifyFailIfNoPeerCert VerifyOptions = C.SSL_VERIFY_FAIL_IF_NO_PEER_CERT
-    // TODO: fill in all the others
+    VerifyNone             VerifyOptions = C.SSL_VERIFY_NONE
+    VerifyPeer                           = C.SSL_VERIFY_PEER
+    VerifyFailIfNoPeerCert               = C.SSL_VERIFY_FAIL_IF_NO_PEER_CERT
+    VerifyClientOnce                     = C.SSL_VERIFY_CLIENT_ONCE
 )
 
 func (c *Ctx) SetVerify(options VerifyOptions) {
     // TODO: take a callback
     C.SSL_CTX_set_verify(c.ctx, C.int(options), nil)
+}
+
+func (c *Ctx) SetVerifyDepth(depth int) {
+    C.SSL_CTX_set_verify_depth(c.ctx, C.int(depth))
 }
 
 func (c *Ctx) SetSessionId(session_id []byte) error {
@@ -147,8 +206,14 @@ func (c *Ctx) SetCipherList(list string) error {
 type SessionCacheModes int
 
 const (
-    Off SessionCacheModes = C.SSL_SESS_CACHE_OFF
-    // TODO: fill in all the others
+    SessionCacheOff    SessionCacheModes = C.SSL_SESS_CACHE_OFF
+    SessionCacheClient                   = C.SSL_SESS_CACHE_CLIENT
+    SessionCacheServer                   = C.SSL_SESS_CACHE_SERVER
+    SessionCacheBoth                     = C.SSL_SESS_CACHE_BOTH
+    NoAutoClear                          = C.SSL_SESS_CACHE_NO_AUTO_CLEAR
+    NoInternalLookup                     = C.SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
+    NoInternalStore                      = C.SSL_SESS_CACHE_NO_INTERNAL_STORE
+    NoInternal                           = C.SSL_SESS_CACHE_NO_INTERNAL
 )
 
 func (c *Ctx) SetSessionCacheMode(modes SessionCacheModes) SessionCacheModes {

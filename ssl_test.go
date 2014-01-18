@@ -506,12 +506,6 @@ func TestOpenSSLLotsOfConns(t *testing.T) {
         t.Fatal(err)
     }
 
-    ctx.SetOptions(NoCompression)
-    ctx.SetMode(ReleaseBuffers)
-    ctx.SetSessionCacheMode(Off)
-    if err != nil {
-        t.Fatal(err)
-    }
     LotsOfConns(t, 1024*64, 10, 100, 0*time.Second,
         func(l net.Listener) net.Listener {
             return NewListener(l, ctx)
