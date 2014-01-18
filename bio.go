@@ -249,12 +249,18 @@ func (b *readBio) ReadFromOnce(r io.Reader) (n int, err error) {
         b.buf = new_buf
     }
     dst := b.buf[len(b.buf):cap(b.buf)]
+    dst_slice := b.buf
     b.data_mtx.Unlock()
 
     n, err = r.Read(dst)
     b.data_mtx.Lock()
     defer b.data_mtx.Unlock()
     if n > 0 {
+        if len(dst_slice) != len(b.buf) {
+            // someone shrunk the buffer, so we read in to far ahead and we
+            // need to slide backwards
+            copy(b.buf[len(b.buf):len(b.buf)+n], dst)
+        }
         b.buf = b.buf[:len(b.buf)+n]
     }
     return n, err

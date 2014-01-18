@@ -136,7 +136,9 @@ func (c *Ctx) SetSessionId(session_id []byte) error {
 func (c *Ctx) SetCipherList(list string) error {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
-    if int(C.SSL_CTX_set_cipher_list(c.ctx, C.CString(list))) == 0 {
+    clist := C.CString(list)
+    defer C.free(unsafe.Pointer(clist))
+    if int(C.SSL_CTX_set_cipher_list(c.ctx, clist)) == 0 {
         return errorFromErrorQueue()
     }
     return nil
