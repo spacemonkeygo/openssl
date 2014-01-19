@@ -2,7 +2,7 @@
 
 #include "runtime.h"
 
-void ·Id(void *ref) {
-    ref = (void *)m;
-    FLUSH(&ref);
+void ·ThreadId(void *id) {
+    id = (void *)m;
+    FLUSH(&id);
 }

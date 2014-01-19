@@ -56,6 +56,7 @@ static void BIO_set_retry_read_not_a_macro(BIO *b) { BIO_set_retry_read(b); }
 import "C"
 
 import (
+    "errors"
     "io"
     "reflect"
     "sync"
@@ -63,7 +64,7 @@ import (
 )
 
 const (
-    sslMaxRecord = 16 * 1024
+    SSLRecordSize = 16 * 1024
 )
 
 func nonCopyGoBytes(ptr uintptr, length int) []byte {
@@ -243,8 +244,8 @@ func (b *readBio) ReadFromOnce(r io.Reader) (n int, err error) {
 
     // make sure we have a destination that fits at least one SSL record
     b.data_mtx.Lock()
-    if cap(b.buf) < len(b.buf)+sslMaxRecord {
-        new_buf := make([]byte, len(b.buf), len(b.buf)+sslMaxRecord)
+    if cap(b.buf) < len(b.buf)+SSLRecordSize {
+        new_buf := make([]byte, len(b.buf), len(b.buf)+SSLRecordSize)
         copy(new_buf, b.buf)
         b.buf = new_buf
     }
@@ -257,7 +258,7 @@ func (b *readBio) ReadFromOnce(r io.Reader) (n int, err error) {
     defer b.data_mtx.Unlock()
     if n > 0 {
         if len(dst_slice) != len(b.buf) {
-            // someone shrunk the buffer, so we read in to far ahead and we
+            // someone shrunk the buffer, so we read in too far ahead and we
             // need to slide backwards
             copy(b.buf[len(b.buf):len(b.buf)+n], dst)
         }
@@ -300,7 +301,7 @@ func (b *anyBio) Write(buf []byte) (written int, err error) {
     n := int(C.BIO_write((*C.BIO)(b), unsafe.Pointer(&buf[0]),
         C.int(len(buf))))
     if n != len(buf) {
-        return n, SSLError.New("BIO write failed")
+        return n, errors.New("BIO write failed")
     }
     return n, nil
 }

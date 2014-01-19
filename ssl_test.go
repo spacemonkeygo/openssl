@@ -13,8 +13,7 @@ import (
     "testing"
     "time"
 
-    "code.spacemonkey.com/go/errors"
-    space_sync "code.spacemonkey.com/go/space/sync"
+    "code.spacemonkey.com/go/openssl/utils"
 )
 
 var (
@@ -80,11 +79,11 @@ func NetPipe(t testing.TB) (net.Conn, net.Conn) {
         t.Fatal(err)
     }
     defer l.Close()
-    client_future := space_sync.NewFuture()
+    client_future := utils.NewFuture()
     go func() {
         client_future.Set(net.Dial(l.Addr().Network(), l.Addr().String()))
     }()
-    errs := errors.NewErrorGroup()
+    var errs utils.ErrorGroup
     server_conn, err := l.Accept()
     errs.Add(err)
     client_conn, err := client_future.Get()
@@ -287,7 +286,8 @@ func StdlibConstructor(t testing.TB, server_conn, client_conn net.Conn) (
     }
     config := &tls.Config{
         Certificates:       []tls.Certificate{cert},
-        InsecureSkipVerify: true}
+        InsecureSkipVerify: true,
+        CipherSuites:       []uint16{tls.TLS_RSA_WITH_AES_128_CBC_SHA}}
     server = tls.Server(server_conn, config)
     client = tls.Client(client_conn, config)
     return server, client
@@ -312,6 +312,10 @@ func OpenSSLConstructor(t testing.TB, server_conn, client_conn net.Conn) (
         t.Fatal(err)
     }
     err = ctx.UseCertificate(cert)
+    if err != nil {
+        t.Fatal(err)
+    }
+    err = ctx.SetCipherList("AES128-SHA")
     if err != nil {
         t.Fatal(err)
     }
@@ -475,7 +479,8 @@ func TestStdlibLotsOfConns(t *testing.T) {
     }
     tls_config := &tls.Config{
         Certificates:       []tls.Certificate{tls_cert},
-        InsecureSkipVerify: true}
+        InsecureSkipVerify: true,
+        CipherSuites:       []uint16{tls.TLS_RSA_WITH_AES_128_CBC_SHA}}
     LotsOfConns(t, 1024*64, 10, 100, 0*time.Second,
         func(l net.Listener) net.Listener {
             return tls.NewListener(l, tls_config)
@@ -505,7 +510,10 @@ func TestOpenSSLLotsOfConns(t *testing.T) {
     if err != nil {
         t.Fatal(err)
     }
-
+    err = ctx.SetCipherList("AES128-SHA")
+    if err != nil {
+        t.Fatal(err)
+    }
     LotsOfConns(t, 1024*64, 10, 100, 0*time.Second,
         func(l net.Listener) net.Listener {
             return NewListener(l, ctx)

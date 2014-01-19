@@ -21,6 +21,8 @@ package openssl
 import "C"
 
 import (
+    "errors"
+    "io/ioutil"
     "runtime"
     "unsafe"
 )
@@ -47,12 +49,14 @@ type SSLVersion int
 
 const (
     SSLv3      SSLVersion = 0x02
-    TLSv1      SSLVersion = 0x03
-    TLSv1_1    SSLVersion = 0x04
-    TLSv1_2    SSLVersion = 0x05
-    AnyVersion SSLVersion = 0x06
+    TLSv1                 = 0x03
+    TLSv1_1               = 0x04
+    TLSv1_2               = 0x05
+    AnyVersion            = 0x06
 )
 
+// NewCtxWithVersion creates an SSL context that is specific to the provided
+// SSL version. See http://www.openssl.org/docs/ssl/SSL_CTX_new.html for more.
 func NewCtxWithVersion(version SSLVersion) (*Ctx, error) {
     switch version {
     case SSLv3:
@@ -66,10 +70,11 @@ func NewCtxWithVersion(version SSLVersion) (*Ctx, error) {
     case AnyVersion:
         return newCtx(C.SSLv23_method())
     default:
-        return nil, SSLError.New("unknown version")
+        return nil, errors.New("unknown ssl/tls version")
     }
 }
 
+// NewCtx creates a context that supports any TLS version 1.0 and newer.
 func NewCtx() (*Ctx, error) {
     c, err := NewCtxWithVersion(AnyVersion)
     if err == nil {
@@ -78,6 +83,49 @@ func NewCtx() (*Ctx, error) {
     return c, err
 }
 
+// NewCtxFromFiles calls NewCtx, loads the provided files, and configures the
+// context to use them.
+func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
+    ctx, err := NewCtx()
+    if err != nil {
+        return nil, err
+    }
+
+    cert_bytes, err := ioutil.ReadFile(cert_file)
+    if err != nil {
+        return nil, err
+    }
+
+    cert, err := LoadCertificate(cert_bytes)
+    if err != nil {
+        return nil, err
+    }
+
+    err = ctx.UseCertificate(cert)
+    if err != nil {
+        return nil, err
+    }
+
+    key_bytes, err := ioutil.ReadFile(key_file)
+    if err != nil {
+        return nil, err
+    }
+
+    key, err := LoadPrivateKey(key_bytes)
+    if err != nil {
+        return nil, err
+    }
+
+    err = ctx.UsePrivateKey(key)
+    if err != nil {
+        return nil, err
+    }
+
+    return ctx, nil
+}
+
+// UseCertificate configures the context to present the given certificate to
+// peers.
 func (c *Ctx) UseCertificate(cert *Certificate) error {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
@@ -87,6 +135,8 @@ func (c *Ctx) UseCertificate(cert *Certificate) error {
     return nil
 }
 
+// UsePrivateKey configures the context to use the given private key for SSL
+// handshakes.
 func (c *Ctx) UsePrivateKey(key PrivateKey) error {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
@@ -101,6 +151,8 @@ type CertificateStore struct {
     ctx   *Ctx // for gc
 }
 
+// GetCertificateStore returns the context's certificate store that will be
+// used for peer validation.
 func (c *Ctx) GetCertificateStore() *CertificateStore {
     // we don't need to dealloc the cert store pointer here, because it points
     // to a ctx internal. so we do need to keep the ctx around
@@ -109,6 +161,8 @@ func (c *Ctx) GetCertificateStore() *CertificateStore {
         ctx:   c}
 }
 
+// AddCertificate marks the provided Certificate as a trusted certificate in
+// the given CertificateStore.
 func (s *CertificateStore) AddCertificate(cert *Certificate) error {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
@@ -118,6 +172,10 @@ func (s *CertificateStore) AddCertificate(cert *Certificate) error {
     return nil
 }
 
+// LoadVerifyLocations tells the context to trust all certificate authorities
+// provided in either the ca_file or the ca_path.
+// See http://www.openssl.org/docs/ssl/SSL_CTX_load_verify_locations.html for
+// more.
 func (c *Ctx) LoadVerifyLocations(ca_file string, ca_path string) error {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
@@ -148,6 +206,8 @@ const (
     NoTicket                                   = C.SSL_OP_NO_TICKET
 )
 
+// SetOptions sets context options. See
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html
 func (c *Ctx) SetOptions(options Options) Options {
     return Options(C.SSL_CTX_set_options_not_a_macro(
         c.ctx, C.long(options)))
@@ -159,6 +219,8 @@ const (
     ReleaseBuffers Modes = C.SSL_MODE_RELEASE_BUFFERS
 )
 
+// SetMode sets context modes. See
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_mode.html
 func (c *Ctx) SetMode(modes Modes) Modes {
     return Modes(C.SSL_CTX_set_mode_not_a_macro(c.ctx, C.long(modes)))
 }
@@ -172,11 +234,16 @@ const (
     VerifyClientOnce                     = C.SSL_VERIFY_CLIENT_ONCE
 )
 
+// SetVerify controls peer verification settings. See
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_verify.html
 func (c *Ctx) SetVerify(options VerifyOptions) {
     // TODO: take a callback
     C.SSL_CTX_set_verify(c.ctx, C.int(options), nil)
 }
 
+// SetVerifyDepth controls how many certificates deep the certificate
+// verification logic is willing to follow a certificate chain. See
+// https://www.openssl.org/docs/ssl/SSL_CTX_set_verify.html
 func (c *Ctx) SetVerifyDepth(depth int) {
     C.SSL_CTX_set_verify_depth(c.ctx, C.int(depth))
 }
@@ -192,6 +259,9 @@ func (c *Ctx) SetSessionId(session_id []byte) error {
     return nil
 }
 
+// SetCipherList sets the list of available ciphers. The format of the list is
+// described at http://www.openssl.org/docs/apps/ciphers.html, but see
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_cipher_list.html for more.
 func (c *Ctx) SetCipherList(list string) error {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
@@ -216,6 +286,8 @@ const (
     NoInternal                           = C.SSL_SESS_CACHE_NO_INTERNAL
 )
 
+// SetSessionCacheMode enables or disables session caching. See
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_session_cache_mode.html
 func (c *Ctx) SetSessionCacheMode(modes SessionCacheModes) SessionCacheModes {
     return SessionCacheModes(
         C.SSL_CTX_set_session_cache_mode_not_a_macro(c.ctx, C.long(modes)))

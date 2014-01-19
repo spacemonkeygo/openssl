@@ -3,16 +3,19 @@
 package openssl
 
 import (
-    "io/ioutil"
     "net/http"
 )
 
+// ListenAndServeTLS will take an http.Handler and serve it using OpenSSL over
+// the given tcp address, configured to use the provided cert and key files.
 func ListenAndServeTLS(addr string, cert_file string, key_file string,
     handler http.Handler) error {
     return ServerListenAndServeTLS(
         &http.Server{Addr: addr, Handler: handler}, cert_file, key_file)
 }
 
+// ServerListenAndServeTLS will take an http.Server and serve it using OpenSSL
+// configured to use the provided cert and key files.
 func ServerListenAndServeTLS(srv *http.Server,
     cert_file, key_file string) error {
     addr := srv.Addr
@@ -20,37 +23,7 @@ func ServerListenAndServeTLS(srv *http.Server,
         addr = ":https"
     }
 
-    ctx, err := NewCtx()
-    if err != nil {
-        return err
-    }
-
-    key_bytes, err := ioutil.ReadFile(key_file)
-    if err != nil {
-        return err
-    }
-
-    key, err := LoadPrivateKey(key_bytes)
-    if err != nil {
-        return err
-    }
-
-    err = ctx.UsePrivateKey(key)
-    if err != nil {
-        return err
-    }
-
-    cert_bytes, err := ioutil.ReadFile(cert_file)
-    if err != nil {
-        return err
-    }
-
-    cert, err := LoadCertificate(cert_bytes)
-    if err != nil {
-        return err
-    }
-
-    err = ctx.UseCertificate(cert)
+    ctx, err := NewCtxFromFiles(cert_file, key_file)
     if err != nil {
         return err
     }

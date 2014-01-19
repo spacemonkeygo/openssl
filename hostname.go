@@ -23,14 +23,13 @@ extern int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
 import "C"
 
 import (
+    "errors"
     "net"
     "unsafe"
-
-    "code.spacemonkey.com/go/errors"
 )
 
 var (
-    ValidationError = errors.New(SSLError, "Host validation error")
+    ValidationError = errors.New("Host validation error")
 )
 
 type CheckFlags int
@@ -40,6 +39,11 @@ const (
     NoWildcards        CheckFlags = C.X509_CHECK_FLAG_NO_WILDCARDS
 )
 
+// CheckHost checks that the X509 certificate is signed for the provided
+// host name. See http://www.openssl.org/docs/crypto/X509_check_host.html for
+// more. Note that CheckHost does not check the IP field. See VerifyHostname.
+// Specifically returns ValidationError if the Certificate didn't match but
+// there was no internal error.
 func (c *Certificate) CheckHost(host string, flags CheckFlags) error {
     chost := unsafe.Pointer(C.CString(host))
     defer C.free(chost)
@@ -49,12 +53,16 @@ func (c *Certificate) CheckHost(host string, flags CheckFlags) error {
         return nil
     }
     if rv == 0 {
-        return ValidationError.New(
-            "cert failed validation for host %s", host)
+        return ValidationError
     }
-    return SSLError.New("hostname validation failed")
+    return errors.New("hostname validation had an internal failure")
 }
 
+// CheckEmail checks that the X509 certificate is signed for the provided
+// email address. See http://www.openssl.org/docs/crypto/X509_check_host.html
+// for more.
+// Specifically returns ValidationError if the Certificate didn't match but
+// there was no internal error.
 func (c *Certificate) CheckEmail(email string, flags CheckFlags) error {
     cemail := unsafe.Pointer(C.CString(email))
     defer C.free(cemail)
@@ -64,12 +72,16 @@ func (c *Certificate) CheckEmail(email string, flags CheckFlags) error {
         return nil
     }
     if rv == 0 {
-        return ValidationError.New(
-            "cert failed validation for email %s", email)
+        return ValidationError
     }
-    return SSLError.New("email validation failed")
+    return errors.New("email validation had an internal failure")
 }
 
+// CheckIP checks that the X509 certificate is signed for the provided
+// IP address. See http://www.openssl.org/docs/crypto/X509_check_host.html
+// for more.
+// Specifically returns ValidationError if the Certificate didn't match but
+// there was no internal error.
 func (c *Certificate) CheckIP(ip net.IP, flags CheckFlags) error {
     cip := unsafe.Pointer(&ip[0])
     rv := C.X509_check_ip(c.x, (*C.uchar)(cip), C.size_t(len(ip)),
@@ -78,12 +90,16 @@ func (c *Certificate) CheckIP(ip net.IP, flags CheckFlags) error {
         return nil
     }
     if rv == 0 {
-        return ValidationError.New(
-            "cert failed validation for ip %s", ip.String())
+        return ValidationError
     }
-    return SSLError.New("ip validation failed")
+    return errors.New("ip validation had an internal failure")
 }
 
+// VerifyHostname is a combination of CheckHost and CheckIP. If the provided
+// hostname looks like an IP address, it will be checked as an IP address,
+// otherwise it will be checked as a hostname.
+// Specifically returns ValidationError if the Certificate didn't match but
+// there was no internal error.
 func (c *Certificate) VerifyHostname(host string) error {
     var ip net.IP
     if len(host) >= 3 && host[0] == '[' && host[len(host)-1] == ']' {

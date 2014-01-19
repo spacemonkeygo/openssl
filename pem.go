@@ -8,19 +8,21 @@ package openssl
 import "C"
 
 import (
-    "crypto/rsa"
-    "crypto/tls"
-    "crypto/x509"
     "encoding/pem"
+    "errors"
     "io/ioutil"
     "runtime"
     "unsafe"
 )
 
 type PublicKey interface {
+    // MarshalPKIXPublicKeyPEM converts the public key to PEM-encoded PKIX
+    // format
     MarshalPKIXPublicKeyPEM() (pem_block []byte, err error)
+
+    // MarshalPKIXPublicKeyDER converts the public key to DER-encoded PKIX
+    // format
     MarshalPKIXPublicKeyDER() (der_block []byte, err error)
-    StdlibPublicKey() (*rsa.PublicKey, error)
 
     evpPKey() *C.EVP_PKEY
 }
@@ -28,9 +30,13 @@ type PublicKey interface {
 type PrivateKey interface {
     PublicKey
 
+    // MarshalPKCS1PrivateKeyPEM converts the private key to PEM-encoded PKCS1
+    // format
     MarshalPKCS1PrivateKeyPEM() (pem_block []byte, err error)
+
+    // MarshalPKCS1PrivateKeyDER converts the private key to DER-encoded PKCS1
+    // format
     MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
-    StdlibPrivateKey() (*rsa.PrivateKey, error)
 }
 
 type pKey struct {
@@ -43,25 +49,12 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
     err error) {
     bio := C.BIO_new(C.BIO_s_mem())
     if bio == nil {
-        return nil, SSLError.New("failed to allocate memory BIO")
+        return nil, errors.New("failed to allocate memory BIO")
     }
     defer C.BIO_free(bio)
     if int(C.PEM_write_bio_PrivateKey(bio, key.key, nil, nil, C.int(0), nil,
         nil)) != 1 {
-        return nil, SSLError.New("failed dumping private key")
-    }
-    return ioutil.ReadAll(asAnyBio(bio))
-}
-
-func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
-    err error) {
-    bio := C.BIO_new(C.BIO_s_mem())
-    if bio == nil {
-        return nil, SSLError.New("failed to allocate memory BIO")
-    }
-    defer C.BIO_free(bio)
-    if int(C.PEM_write_bio_PUBKEY(bio, key.key)) != 1 {
-        return nil, SSLError.New("failed dumping public key")
+        return nil, errors.New("failed dumping private key")
     }
     return ioutil.ReadAll(asAnyBio(bio))
 }
@@ -78,9 +71,22 @@ func (key *pKey) MarshalPKCS1PrivateKeyDER() (der_block []byte,
     var p *pem.Block
     p, pem_block = pem.Decode(pem_block)
     if len(pem_block) > 0 || p == nil {
-        return nil, SSLError.New("something went wrong with PEM generation")
+        return nil, errors.New("something went wrong with PEM generation")
     }
     return p.Bytes, nil
+}
+
+func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
+    err error) {
+    bio := C.BIO_new(C.BIO_s_mem())
+    if bio == nil {
+        return nil, errors.New("failed to allocate memory BIO")
+    }
+    defer C.BIO_free(bio)
+    if int(C.PEM_write_bio_PUBKEY(bio, key.key)) != 1 {
+        return nil, errors.New("failed dumping public key")
+    }
+    return ioutil.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
@@ -95,35 +101,12 @@ func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
     var p *pem.Block
     p, pem_block = pem.Decode(pem_block)
     if len(pem_block) > 0 || p == nil {
-        return nil, SSLError.New("something went wrong with PEM generation")
+        return nil, errors.New("something went wrong with PEM generation")
     }
     return p.Bytes, nil
 }
 
-func (key *pKey) StdlibPrivateKey() (*rsa.PrivateKey, error) {
-    der_block, err := key.MarshalPKCS1PrivateKeyDER()
-    if err != nil {
-        return nil, err
-    }
-    return x509.ParsePKCS1PrivateKey(der_block)
-}
-
-func (key *pKey) StdlibPublicKey() (*rsa.PublicKey, error) {
-    der_block, err := key.MarshalPKIXPublicKeyDER()
-    if err != nil {
-        return nil, err
-    }
-    k, err := x509.ParsePKIXPublicKey(der_block)
-    if err != nil {
-        return nil, err
-    }
-    rk, ok := k.(*rsa.PublicKey)
-    if !ok {
-        return nil, SSLError.New("not an rsa public key")
-    }
-    return rk, nil
-}
-
+// LoadPrivateKey loads a private key from a PEM-encoded block.
 func LoadPrivateKey(pem_block []byte) (PrivateKey, error) {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
@@ -145,6 +128,7 @@ type Certificate struct {
     x *C.X509
 }
 
+// LoadCertificate loads an X509 certificate from a PEM-encoded block.
 func LoadCertificate(pem_block []byte) (*Certificate, error) {
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
@@ -162,43 +146,28 @@ func LoadCertificate(pem_block []byte) (*Certificate, error) {
     return x, nil
 }
 
+// MarshalPEM converts the X509 certificate to PEM-encoded format
 func (c *Certificate) MarshalPEM() (pem_block []byte, err error) {
     bio := C.BIO_new(C.BIO_s_mem())
     if bio == nil {
-        return nil, SSLError.New("failed to allocate memory BIO")
+        return nil, errors.New("failed to allocate memory BIO")
     }
     defer C.BIO_free(bio)
     if int(C.PEM_write_bio_X509(bio, c.x)) != 1 {
-        return nil, SSLError.New("failed dumping certificate")
+        return nil, errors.New("failed dumping certificate")
     }
     return ioutil.ReadAll(asAnyBio(bio))
 }
 
+// PublicKey returns the public key embedded in the X509 certificate.
 func (c *Certificate) PublicKey() (PublicKey, error) {
     pkey := C.X509_get_pubkey(c.x)
     if pkey == nil {
-        return nil, SSLError.New("no public key found")
+        return nil, errors.New("no public key found")
     }
     key := &pKey{key: pkey}
     runtime.SetFinalizer(key, func(key *pKey) {
         C.EVP_PKEY_free(key.key)
     })
     return key, nil
-}
-
-type KeyPair struct {
-    Certificate *Certificate
-    PrivateKey  PrivateKey
-}
-
-func X509KeyPair(key PrivateKey, cert *Certificate) (tls.Certificate, error) {
-    key_pem_bytes, err := key.MarshalPKCS1PrivateKeyPEM()
-    if err != nil {
-        return tls.Certificate{}, err
-    }
-    cert_pem_bytes, err := cert.MarshalPEM()
-    if err != nil {
-        return tls.Certificate{}, err
-    }
-    return tls.X509KeyPair(cert_pem_bytes, key_pem_bytes)
 }

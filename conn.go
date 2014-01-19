@@ -9,6 +9,7 @@ package openssl
 import "C"
 
 import (
+    "errors"
     "io"
     "net"
     "runtime"
@@ -16,18 +17,14 @@ import (
     "time"
     "unsafe"
 
-    "code.spacemonkey.com/go/errors"
-    space_sync "code.spacemonkey.com/go/space/sync"
+    "code.spacemonkey.com/go/openssl/utils"
 )
 
 var (
-    ErrnoError = errors.New(SSLError, "Errno")
-
-    internalConnError = errors.New(SSLError, "Unhandled internal error")
-    zeroReturn        = internalConnError.New("zero return")
-    wantRead          = internalConnError.New("want read")
-    wantWrite         = internalConnError.New("want write")
-    tryAgain          = internalConnError.New("try again")
+    zeroReturn = errors.New("zero return")
+    wantRead   = errors.New("want read")
+    wantWrite  = errors.New("want write")
+    tryAgain   = errors.New("try again")
 )
 
 type Conn struct {
@@ -37,7 +34,7 @@ type Conn struct {
     from_ssl         *writeBio
     is_shutdown      bool
     mtx              sync.Mutex
-    want_read_future *space_sync.Future
+    want_read_future *utils.Future
 }
 
 func newSSL(ctx *C.SSL_CTX) (*C.SSL, error) {
@@ -66,7 +63,7 @@ func newConn(conn net.Conn, ctx *Ctx) (*Conn, error) {
         C.BIO_free(into_ssl_cbio)
         C.BIO_free(from_ssl_cbio)
         C.SSL_free(ssl)
-        return nil, SSLError.New("failed to allocate memory BIO")
+        return nil, errors.New("failed to allocate memory BIO")
     }
 
     // the ssl object takes ownership of these objects now
@@ -85,6 +82,17 @@ func newConn(conn net.Conn, ctx *Ctx) (*Conn, error) {
     return c, nil
 }
 
+// Client wraps an existing stream connection and puts it in the connect state
+// for any subsequent handshakes.
+//
+// IMPORTANT NOTE: if you use this method instead of Dial to construct an SSL
+// connection, you are responsible for verifying the peer's hostname.
+// Otherwise, you are vulnerable to MITM attacks.
+//
+// Client connections probably won't work for you unless you set a verify
+// location or add some certs to the certificate store of the client context
+// you're using. This library is not nice enough to use the system certificate
+// store by default for you yet.
 func Client(conn net.Conn, ctx *Ctx) (*Conn, error) {
     c, err := newConn(conn, ctx)
     if err != nil {
@@ -94,6 +102,8 @@ func Client(conn net.Conn, ctx *Ctx) (*Conn, error) {
     return c, nil
 }
 
+// Server wraps an existing stream connection and puts it in the accept state
+// for any subsequent handshakes.
 func Server(conn net.Conn, ctx *Ctx) (*Conn, error) {
     c, err := newConn(conn, ctx)
     if err != nil {
@@ -138,7 +148,7 @@ func (c *Conn) getErrorHandler(rv C.int, errno error) func() error {
                 return err
             }
         }
-        c.want_read_future = space_sync.NewFuture()
+        c.want_read_future = utils.NewFuture()
         want_read_future := c.want_read_future
         return func() (err error) {
             defer func() {
@@ -170,9 +180,9 @@ func (c *Conn) getErrorHandler(rv C.int, errno error) func() error {
         if C.ERR_peek_error() == 0 {
             switch rv {
             case 0:
-                err = SSLError.New("Unexpected EOF")
+                err = errors.New("protocol-violating EOF")
             case -1:
-                err = ErrnoError.Wrap(errno)
+                err = errno
             default:
                 err = errorFromErrorQueue()
             }
@@ -208,6 +218,8 @@ func (c *Conn) handshake() func() error {
     return c.getErrorHandler(rv, errno)
 }
 
+// Handshake performs an SSL handshake. If a handshake is not manually
+// triggered, it will run before the first I/O on the encrypted stream.
 func (c *Conn) Handshake() error {
     err := tryAgain
     for err == tryAgain {
@@ -219,15 +231,17 @@ func (c *Conn) Handshake() error {
     return err
 }
 
+// PeerCertificate returns the Certificate of the peer with which you're
+// communicating. Only valid after a handshake.
 func (c *Conn) PeerCertificate() (*Certificate, error) {
     c.mtx.Lock()
     if c.is_shutdown {
-        return nil, SSLError.New("connection closed")
+        return nil, errors.New("connection closed")
     }
     x := C.SSL_get_peer_certificate(c.ssl)
     c.mtx.Unlock()
     if x == nil {
-        return nil, SSLError.New("no peer certificate found")
+        return nil, errors.New("no peer certificate found")
     }
     cert := &Certificate{x: x}
     runtime.SetFinalizer(cert, func(cert *Certificate) {
@@ -271,7 +285,7 @@ func (c *Conn) shutdownLoop() error {
             return c.flushOutputBuffer()
         }
         if err == tryAgain && shutdown_tries >= 2 {
-            return SSLError.New("shutdown requested a third time?")
+            return errors.New("shutdown requested a third time?")
         }
     }
     if err == io.ErrUnexpectedEOF {
@@ -280,6 +294,8 @@ func (c *Conn) shutdownLoop() error {
     return err
 }
 
+// Close shuts down the SSL connection and closes the underlying wrapped
+// connection.
 func (c *Conn) Close() error {
     c.mtx.Lock()
     if c.is_shutdown {
@@ -288,7 +304,7 @@ func (c *Conn) Close() error {
     }
     c.is_shutdown = true
     c.mtx.Unlock()
-    errs := errors.NewErrorGroup()
+    var errs utils.ErrorGroup
     errs.Add(c.shutdownLoop())
     errs.Add(c.conn.Close())
     return errs.Finalize()
@@ -309,6 +325,9 @@ func (c *Conn) read(b []byte) (int, func() error) {
     return 0, c.getErrorHandler(rv, errno)
 }
 
+// Read reads up to len(b) bytes into b. It returns the number of bytes read
+// and an error if applicable. io.EOF is returned when the caller can expect
+// to see no more data.
 func (c *Conn) Read(b []byte) (n int, err error) {
     if len(b) == 0 {
         return 0, nil
@@ -333,7 +352,7 @@ func (c *Conn) write(b []byte) (int, func() error) {
     c.mtx.Lock()
     defer c.mtx.Unlock()
     if c.is_shutdown {
-        err := SSLError.New("connection closed")
+        err := errors.New("connection closed")
         return 0, func() error { return err }
     }
     rv, errno := C.SSL_write(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
@@ -343,6 +362,9 @@ func (c *Conn) write(b []byte) (int, func() error) {
     return 0, c.getErrorHandler(rv, errno)
 }
 
+// Write will encrypt the contents of b and write it to the underlying stream.
+// Performance will be vastly improved if the size of b is a multiple of
+// SSLRecordSize.
 func (c *Conn) Write(b []byte) (written int, err error) {
     if len(b) == 0 {
         return 0, nil
@@ -358,6 +380,8 @@ func (c *Conn) Write(b []byte) (written int, err error) {
     return 0, err
 }
 
+// VerifyHostname pulls the PeerCertificate and calls VerifyHostname on the
+// certificate.
 func (c *Conn) VerifyHostname(host string) error {
     cert, err := c.PeerCertificate()
     if err != nil {
@@ -366,22 +390,27 @@ func (c *Conn) VerifyHostname(host string) error {
     return cert.VerifyHostname(host)
 }
 
+// LocalAddr returns the underlying connection's local address
 func (c *Conn) LocalAddr() net.Addr {
     return c.conn.LocalAddr()
 }
 
+// RemoteAddr returns the underlying connection's remote address
 func (c *Conn) RemoteAddr() net.Addr {
     return c.conn.RemoteAddr()
 }
 
+// SetDeadline calls SetDeadline on the underlying connection.
 func (c *Conn) SetDeadline(t time.Time) error {
     return c.conn.SetDeadline(t)
 }
 
+// SetReadDeadline calls SetReadDeadline on the underlying connection.
 func (c *Conn) SetReadDeadline(t time.Time) error {
     return c.conn.SetReadDeadline(t)
 }
 
+// SetWriteDeadline calls SetWriteDeadline on the underlying connection.
 func (c *Conn) SetWriteDeadline(t time.Time) error {
     return c.conn.SetWriteDeadline(t)
 }
