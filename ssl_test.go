@@ -392,6 +392,90 @@ func BenchmarkOpenSSLStdlibThroughput(b *testing.B) {
     ThroughputBenchmark(b, OpenSSLStdlibConstructor)
 }
 
+func FullDuplexRenegotiationTest(t testing.TB, constructor func(
+    t testing.TB, conn1, conn2 net.Conn) (sslconn1, sslconn2 HandshakingConn)) {
+
+    server_conn, client_conn := NetPipe(t)
+    defer server_conn.Close()
+    defer client_conn.Close()
+
+    times := 256
+    data_len := 4 * SSLRecordSize
+    data1 := make([]byte, data_len)
+    _, err := io.ReadFull(rand.Reader, data1[:])
+    if err != nil {
+        t.Fatal(err)
+    }
+    data2 := make([]byte, data_len)
+    _, err = io.ReadFull(rand.Reader, data1[:])
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    server, client := constructor(t, server_conn, client_conn)
+    defer close_both(server, client)
+
+    var wg sync.WaitGroup
+
+    send_func := func(sender HandshakingConn, data []byte) {
+        defer wg.Done()
+        for i := 0; i < times; i++ {
+            if i == times/2 {
+                wg.Add(1)
+                go func() {
+                    defer wg.Done()
+                    err := sender.Handshake()
+                    if err != nil {
+                        t.Fatal(err)
+                    }
+                }()
+            }
+            _, err := sender.Write(data)
+            if err != nil {
+                t.Fatal(err)
+            }
+        }
+    }
+
+    recv_func := func(receiver net.Conn, data []byte) {
+        defer wg.Done()
+
+        buf := make([]byte, len(data))
+        for i := 0; i < times; i++ {
+            n, err := io.ReadFull(receiver, buf[:])
+            if err != nil {
+                t.Fatal(err)
+            }
+            if !bytes.Equal(buf[:n], data) {
+                t.Fatal(err)
+            }
+        }
+    }
+
+    wg.Add(4)
+    go recv_func(server, data1)
+    go send_func(client, data1)
+    go send_func(server, data2)
+    go recv_func(client, data2)
+    wg.Wait()
+}
+
+func TestStdlibFullDuplexRenegotiation(t *testing.T) {
+    FullDuplexRenegotiationTest(t, StdlibConstructor)
+}
+
+func TestOpenSSLFullDuplexRenegotiation(t *testing.T) {
+    FullDuplexRenegotiationTest(t, OpenSSLConstructor)
+}
+
+func TestOpenSSLStdlibFullDuplexRenegotiation(t *testing.T) {
+    FullDuplexRenegotiationTest(t, OpenSSLStdlibConstructor)
+}
+
+func TestStdlibOpenSSLFullDuplexRenegotiation(t *testing.T) {
+    FullDuplexRenegotiationTest(t, StdlibOpenSSLConstructor)
+}
+
 func LotsOfConns(t *testing.T, payload_size int64, loops, clients int,
     sleep time.Duration, newListener func(net.Listener) net.Listener,
     newClient func(net.Conn) (net.Conn, error)) {

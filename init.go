@@ -46,7 +46,8 @@
 //  }
 //  conn, err := openssl.Dial("tcp", "localhost:7777", ctx, 0)
 //
-// TODO/Help wanted: make an easy interface to the net/http client library
+// TODO/Help wanted: make an easy interface to the net/http client library that
+// supports all the fiddly bits like proxies and connection pools and what-not.
 package openssl
 
 /*

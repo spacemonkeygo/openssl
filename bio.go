@@ -148,25 +148,18 @@ func (b *writeBio) WriteTo(w io.Writer) (rv int64, err error) {
     b.data_mtx.Lock()
     data := b.buf
     b.data_mtx.Unlock()
-    total := int64(0)
 
-    for {
-        if len(data) == 0 {
-            return total, nil
-        }
-        written, err := w.Write(data)
-        total += int64(written)
-
-        // subtract however much data we wrote from the buffer
-        b.data_mtx.Lock()
-        n := copy(b.buf, b.buf[written:])
-        b.buf = b.buf[:n]
-        data = b.buf
-        b.data_mtx.Unlock()
-        if err != nil {
-            return total, err
-        }
+    if len(data) == 0 {
+        return 0, nil
     }
+    n, err := w.Write(data)
+
+    // subtract however much data we wrote from the buffer
+    b.data_mtx.Lock()
+    b.buf = b.buf[:copy(b.buf, b.buf[n:])]
+    b.data_mtx.Unlock()
+
+    return int64(n), err
 }
 
 func (self *writeBio) Disconnect(b *C.BIO) {

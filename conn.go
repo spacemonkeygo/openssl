@@ -141,6 +141,7 @@ func (c *Conn) getErrorHandler(rv C.int, errno error) func() error {
             return io.ErrUnexpectedEOF
         }
     case C.SSL_ERROR_WANT_READ:
+        go c.flushOutputBuffer()
         if c.want_read_future != nil {
             want_read_future := c.want_read_future
             return func() error {
@@ -157,10 +158,6 @@ func (c *Conn) getErrorHandler(rv C.int, errno error) func() error {
                 c.mtx.Unlock()
                 want_read_future.Set(nil, err)
             }()
-            err = c.flushOutputBuffer()
-            if err != nil {
-                return err
-            }
             err = c.fillInputBuffer()
             if err != nil {
                 return err
@@ -204,13 +201,13 @@ func (c *Conn) handleError(errcb func() error) error {
 }
 
 func (c *Conn) handshake() func() error {
-    runtime.LockOSThread()
-    defer runtime.UnlockOSThread()
     c.mtx.Lock()
     defer c.mtx.Unlock()
     if c.is_shutdown {
         return func() error { return io.ErrUnexpectedEOF }
     }
+    runtime.LockOSThread()
+    defer runtime.UnlockOSThread()
     rv, errno := C.SSL_do_handshake(c.ssl)
     if rv > 0 {
         return nil
@@ -224,10 +221,8 @@ func (c *Conn) Handshake() error {
     err := tryAgain
     for err == tryAgain {
         err = c.handleError(c.handshake())
-        if err == nil {
-            return c.flushOutputBuffer()
-        }
     }
+    go c.flushOutputBuffer()
     return err
 }
 
@@ -251,10 +246,10 @@ func (c *Conn) PeerCertificate() (*Certificate, error) {
 }
 
 func (c *Conn) shutdown() func() error {
-    runtime.LockOSThread()
-    defer runtime.UnlockOSThread()
     c.mtx.Lock()
     defer c.mtx.Unlock()
+    runtime.LockOSThread()
+    defer runtime.UnlockOSThread()
     rv, errno := C.SSL_shutdown(c.ssl)
     if rv > 0 {
         return nil
@@ -311,13 +306,13 @@ func (c *Conn) Close() error {
 }
 
 func (c *Conn) read(b []byte) (int, func() error) {
-    runtime.LockOSThread()
-    defer runtime.UnlockOSThread()
     c.mtx.Lock()
     defer c.mtx.Unlock()
     if c.is_shutdown {
         return 0, func() error { return io.EOF }
     }
+    runtime.LockOSThread()
+    defer runtime.UnlockOSThread()
     rv, errno := C.SSL_read(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
     if rv > 0 {
         return int(rv), nil
@@ -337,7 +332,8 @@ func (c *Conn) Read(b []byte) (n int, err error) {
         n, errcb := c.read(b)
         err = c.handleError(errcb)
         if err == nil {
-            return n, c.flushOutputBuffer()
+            go c.flushOutputBuffer()
+            return n, nil
         }
         if err == io.ErrUnexpectedEOF {
             err = io.EOF
@@ -347,14 +343,14 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 }
 
 func (c *Conn) write(b []byte) (int, func() error) {
-    runtime.LockOSThread()
-    defer runtime.UnlockOSThread()
     c.mtx.Lock()
     defer c.mtx.Unlock()
     if c.is_shutdown {
         err := errors.New("connection closed")
         return 0, func() error { return err }
     }
+    runtime.LockOSThread()
+    defer runtime.UnlockOSThread()
     rv, errno := C.SSL_write(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
     if rv > 0 {
         return int(rv), nil
