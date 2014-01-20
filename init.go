@@ -58,7 +58,7 @@ package openssl
 #include <openssl/evp.h>
 #include <openssl/engine.h>
 
-extern void sslThreadId(CRYPTO_THREADID *id);
+extern unsigned long sslThreadId();
 extern void sslMutexOp(int mode, int n, char *file, int line);
 
 static void OpenSSL_add_all_algorithms_not_a_macro() {
@@ -87,7 +87,7 @@ func init() {
     C.SSL_library_init()
     C.OpenSSL_add_all_algorithms_not_a_macro()
     sslMutexes = make([]sync.Mutex, int(C.CRYPTO_num_locks()))
-    C.CRYPTO_THREADID_set_callback((*[0]byte)(C.sslThreadId))
+    C.CRYPTO_set_id_callback((*[0]byte)(C.sslThreadId))
     C.CRYPTO_set_locking_callback((*[0]byte)(C.sslMutexOp))
 
     // TODO: support dynlock callbacks
@@ -120,6 +120,6 @@ func sslMutexOp(mode, n C.int, file *C.char, line C.int) {
 }
 
 //export sslThreadId
-func sslThreadId(id *C.CRYPTO_THREADID) {
-    C.CRYPTO_THREADID_set_pointer(id, utils.ThreadId())
+func sslThreadId() C.ulong {
+    return C.ulong(uintptr(utils.ThreadId()))
 }

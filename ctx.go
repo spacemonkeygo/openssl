@@ -18,6 +18,18 @@ package openssl
 //    return SSL_CTX_set_session_cache_mode(ctx, modes);
 // }
 //
+// #ifndef SSL_MODE_RELEASE_BUFFERS
+// #define SSL_MODE_RELEASE_BUFFERS 0
+// #endif
+// #ifndef SSL_OP_NO_COMPRESSION
+// #define SSL_OP_NO_COMPRESSION 0
+// #endif
+// #ifndef TLSv1_1_method
+// const SSL_METHOD *TLSv1_1_method() { return NULL; }
+// #endif
+// #ifndef TLSv1_2_method
+// const SSL_METHOD *TLSv1_2_method() { return NULL; }
+// #endif
 import "C"
 
 import (
@@ -58,20 +70,23 @@ const (
 // NewCtxWithVersion creates an SSL context that is specific to the provided
 // SSL version. See http://www.openssl.org/docs/ssl/SSL_CTX_new.html for more.
 func NewCtxWithVersion(version SSLVersion) (*Ctx, error) {
+    var method *C.SSL_METHOD
     switch version {
     case SSLv3:
-        return newCtx(C.SSLv3_method())
+        method = C.SSLv3_method()
     case TLSv1:
-        return newCtx(C.TLSv1_method())
+        method = C.TLSv1_method()
     case TLSv1_1:
-        return newCtx(C.TLSv1_1_method())
+        method = C.TLSv1_1_method()
     case TLSv1_2:
-        return newCtx(C.TLSv1_2_method())
+        method = C.TLSv1_2_method()
     case AnyVersion:
-        return newCtx(C.SSLv23_method())
-    default:
+        method = C.SSLv23_method()
+    }
+    if method == nil {
         return nil, errors.New("unknown ssl/tls version")
     }
+    return newCtx(method)
 }
 
 // NewCtx creates a context that supports any TLS version 1.0 and newer.
@@ -197,6 +212,7 @@ func (c *Ctx) LoadVerifyLocations(ca_file string, ca_path string) error {
 type Options int
 
 const (
+    // NoCompression is only valid if you are using OpenSSL 1.0.1 or newer
     NoCompression                      Options = C.SSL_OP_NO_COMPRESSION
     NoSSLv2                            Options = C.SSL_OP_NO_SSLv2
     NoSSLv3                            Options = C.SSL_OP_NO_SSLv3
@@ -216,6 +232,7 @@ func (c *Ctx) SetOptions(options Options) Options {
 type Modes int
 
 const (
+    // ReleaseBuffers is only valid if you are using OpenSSL 1.0.1 or newer
     ReleaseBuffers Modes = C.SSL_MODE_RELEASE_BUFFERS
 )
 
