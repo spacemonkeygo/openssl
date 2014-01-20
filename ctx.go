@@ -49,10 +49,10 @@ type SSLVersion int
 
 const (
     SSLv3      SSLVersion = 0x02
-    TLSv1                 = 0x03
-    TLSv1_1               = 0x04
-    TLSv1_2               = 0x05
-    AnyVersion            = 0x06
+    TLSv1      SSLVersion = 0x03
+    TLSv1_1    SSLVersion = 0x04
+    TLSv1_2    SSLVersion = 0x05
+    AnyVersion SSLVersion = 0x06
 )
 
 // NewCtxWithVersion creates an SSL context that is specific to the provided
@@ -198,12 +198,12 @@ type Options int
 
 const (
     NoCompression                      Options = C.SSL_OP_NO_COMPRESSION
-    NoSSLv2                                    = C.SSL_OP_NO_SSLv2
-    NoSSLv3                                    = C.SSL_OP_NO_SSLv3
-    NoTLSv1                                    = C.SSL_OP_NO_TLSv1
-    CipherServerPreference                     = C.SSL_OP_CIPHER_SERVER_PREFERENCE
-    NoSessionResumptionOrRenegotiation         = C.SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
-    NoTicket                                   = C.SSL_OP_NO_TICKET
+    NoSSLv2                            Options = C.SSL_OP_NO_SSLv2
+    NoSSLv3                            Options = C.SSL_OP_NO_SSLv3
+    NoTLSv1                            Options = C.SSL_OP_NO_TLSv1
+    CipherServerPreference             Options = C.SSL_OP_CIPHER_SERVER_PREFERENCE
+    NoSessionResumptionOrRenegotiation Options = C.SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
+    NoTicket                           Options = C.SSL_OP_NO_TICKET
 )
 
 // SetOptions sets context options. See
@@ -229,9 +229,9 @@ type VerifyOptions int
 
 const (
     VerifyNone             VerifyOptions = C.SSL_VERIFY_NONE
-    VerifyPeer                           = C.SSL_VERIFY_PEER
-    VerifyFailIfNoPeerCert               = C.SSL_VERIFY_FAIL_IF_NO_PEER_CERT
-    VerifyClientOnce                     = C.SSL_VERIFY_CLIENT_ONCE
+    VerifyPeer             VerifyOptions = C.SSL_VERIFY_PEER
+    VerifyFailIfNoPeerCert VerifyOptions = C.SSL_VERIFY_FAIL_IF_NO_PEER_CERT
+    VerifyClientOnce       VerifyOptions = C.SSL_VERIFY_CLIENT_ONCE
 )
 
 // SetVerify controls peer verification settings. See
@@ -277,13 +277,13 @@ type SessionCacheModes int
 
 const (
     SessionCacheOff    SessionCacheModes = C.SSL_SESS_CACHE_OFF
-    SessionCacheClient                   = C.SSL_SESS_CACHE_CLIENT
-    SessionCacheServer                   = C.SSL_SESS_CACHE_SERVER
-    SessionCacheBoth                     = C.SSL_SESS_CACHE_BOTH
-    NoAutoClear                          = C.SSL_SESS_CACHE_NO_AUTO_CLEAR
-    NoInternalLookup                     = C.SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
-    NoInternalStore                      = C.SSL_SESS_CACHE_NO_INTERNAL_STORE
-    NoInternal                           = C.SSL_SESS_CACHE_NO_INTERNAL
+    SessionCacheClient SessionCacheModes = C.SSL_SESS_CACHE_CLIENT
+    SessionCacheServer SessionCacheModes = C.SSL_SESS_CACHE_SERVER
+    SessionCacheBoth   SessionCacheModes = C.SSL_SESS_CACHE_BOTH
+    NoAutoClear        SessionCacheModes = C.SSL_SESS_CACHE_NO_AUTO_CLEAR
+    NoInternalLookup   SessionCacheModes = C.SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
+    NoInternalStore    SessionCacheModes = C.SSL_SESS_CACHE_NO_INTERNAL_STORE
+    NoInternal         SessionCacheModes = C.SSL_SESS_CACHE_NO_INTERNAL
 )
 
 // SetSessionCacheMode enables or disables session caching. See
