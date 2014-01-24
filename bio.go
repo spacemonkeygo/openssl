@@ -3,7 +3,6 @@
 package openssl
 
 /*
-#cgo pkg-config: openssl
 #include <string.h>
 #include <openssl/bio.h>
 
