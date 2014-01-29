@@ -17,8 +17,7 @@ import (
 )
 
 var (
-    certBytes = []byte(`
------BEGIN CERTIFICATE-----
+    certBytes = []byte(`-----BEGIN CERTIFICATE-----
 MIIDxDCCAqygAwIBAgIVAMcK/0VWQr2O3MNfJCydqR7oVELcMA0GCSqGSIb3DQEB
 BQUAMIGQMUkwRwYDVQQDE0A1NjdjZGRmYzRjOWZiNTYwZTk1M2ZlZjA1N2M0NGFm
 MDdiYjc4MDIzODIxYTA5NThiY2RmMGMwNzJhOTdiMThhMQswCQYDVQQGEwJVUzEN
@@ -42,8 +41,7 @@ sRkg/uxcJf7wC5Y0BLlp1+aPwdmZD87T3a1uQ1Ij93jmHG+2T9U20MklHAePOl0q
 yTqdSPnSH1c=
 -----END CERTIFICATE-----
 `)
-    keyBytes = []byte(`
------BEGIN RSA PRIVATE KEY-----
+    keyBytes = []byte(`-----BEGIN RSA PRIVATE KEY-----
 MIIEpQIBAAKCAQEA3X94nDbxbK5a5zS4vEqHLHKpUmxavqRL5oXEqKoAy6nm56rv
 C3e9xySe+DBlxIEV/MWU+RYpzjC99QkerfRP493aleqfhn3ZRS3tyKrQtP2z1Zwg
 wYqwcoASOLgqzKvtVYQMT1nJaw6O5fUEWG7BMR/ZX5/kcr8XjTGYjgEmrL1WTZ3G
@@ -70,11 +68,11 @@ ByGgkUECgYEAmop45kRi974g4MPvyLplcE4syb19ifrHj76gPRBi94Cp8jZosY1T
 ucCCa4lOGgPtXJ0Qf1c8yq5vh4yqkQjrgUTkr+CFDGR6y4CxmNDQxEMYIajaIiSY
 qmgvgyRayemfO2zR0CPgC6wSoGBth+xW6g+WA8y0z76ZSaWpFi8lVM4=
 -----END RSA PRIVATE KEY-----
-    `)
+`)
 )
 
 func NetPipe(t testing.TB) (net.Conn, net.Conn) {
-    l, err := net.Listen("tcp", ":0")
+    l, err := net.Listen("tcp", "localhost:0")
     if err != nil {
         t.Fatal(err)
     }
@@ -479,7 +477,7 @@ func TestStdlibOpenSSLFullDuplexRenegotiation(t *testing.T) {
 func LotsOfConns(t *testing.T, payload_size int64, loops, clients int,
     sleep time.Duration, newListener func(net.Listener) net.Listener,
     newClient func(net.Conn) (net.Conn, error)) {
-    tcp_listener, err := net.Listen("tcp", ":0")
+    tcp_listener, err := net.Listen("tcp", "localhost:0")
     if err != nil {
         t.Fatal(err)
     }

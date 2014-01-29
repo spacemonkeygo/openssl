@@ -7,7 +7,6 @@ package openssl
 import "C"
 
 import (
-    "encoding/pem"
     "errors"
     "io/ioutil"
     "runtime"
@@ -51,7 +50,12 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
         return nil, errors.New("failed to allocate memory BIO")
     }
     defer C.BIO_free(bio)
-    if int(C.PEM_write_bio_PrivateKey(bio, key.key, nil, nil, C.int(0), nil,
+    rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+    if rsa == nil {
+        return nil, errors.New("failed getting rsa key")
+    }
+    defer C.RSA_free(rsa)
+    if int(C.PEM_write_bio_RSAPrivateKey(bio, rsa, nil, nil, C.int(0), nil,
         nil)) != 1 {
         return nil, errors.New("failed dumping private key")
     }
@@ -60,19 +64,20 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
 
 func (key *pKey) MarshalPKCS1PrivateKeyDER() (der_block []byte,
     err error) {
-    // TODO: i can't decipher how to get a generic PKCS1 Private Key in DER
-    //    format out of the openssl docs, so until someone who knows better
-    //    can chastise me for this, we'll do it this way.
-    pem_block, err := key.MarshalPKCS1PrivateKeyPEM()
-    if err != nil {
-        return nil, err
+    bio := C.BIO_new(C.BIO_s_mem())
+    if bio == nil {
+        return nil, errors.New("failed to allocate memory BIO")
     }
-    var p *pem.Block
-    p, pem_block = pem.Decode(pem_block)
-    if len(pem_block) > 0 || p == nil {
-        return nil, errors.New("something went wrong with PEM generation")
+    defer C.BIO_free(bio)
+    rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+    if rsa == nil {
+        return nil, errors.New("failed getting rsa key")
     }
-    return p.Bytes, nil
+    defer C.RSA_free(rsa)
+    if int(C.i2d_RSAPrivateKey_bio(bio, rsa)) != 1 {
+        return nil, errors.New("failed dumping private key der")
+    }
+    return ioutil.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
@@ -82,40 +87,60 @@ func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
         return nil, errors.New("failed to allocate memory BIO")
     }
     defer C.BIO_free(bio)
-    if int(C.PEM_write_bio_PUBKEY(bio, key.key)) != 1 {
-        return nil, errors.New("failed dumping public key")
+    rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+    if rsa == nil {
+        return nil, errors.New("failed getting rsa key")
+    }
+    defer C.RSA_free(rsa)
+    if int(C.PEM_write_bio_RSA_PUBKEY(bio, rsa)) != 1 {
+        return nil, errors.New("failed dumping public key pem")
     }
     return ioutil.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
     err error) {
-    // TODO: i can't decipher how to get a generic PKIX Public Key in DER
-    //    format out of the openssl docs, so until someone who knows better
-    //    can chastise me for this, we'll do it this way.
-    pem_block, err := key.MarshalPKIXPublicKeyPEM()
-    if err != nil {
-        return nil, err
+    bio := C.BIO_new(C.BIO_s_mem())
+    if bio == nil {
+        return nil, errors.New("failed to allocate memory BIO")
     }
-    var p *pem.Block
-    p, pem_block = pem.Decode(pem_block)
-    if len(pem_block) > 0 || p == nil {
-        return nil, errors.New("something went wrong with PEM generation")
+    defer C.BIO_free(bio)
+    rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+    if rsa == nil {
+        return nil, errors.New("failed getting rsa key")
     }
-    return p.Bytes, nil
+    defer C.RSA_free(rsa)
+    if int(C.i2d_RSA_PUBKEY_bio(bio, rsa)) != 1 {
+        return nil, errors.New("failed dumping public key der")
+    }
+    return ioutil.ReadAll(asAnyBio(bio))
 }
 
 // LoadPrivateKey loads a private key from a PEM-encoded block.
 func LoadPrivateKey(pem_block []byte) (PrivateKey, error) {
-    runtime.LockOSThread()
-    defer runtime.UnlockOSThread()
     bio := C.BIO_new_mem_buf(unsafe.Pointer(&pem_block[0]),
         C.int(len(pem_block)))
-    key := C.PEM_read_bio_PrivateKey(bio, nil, nil, nil)
-    C.BIO_free(bio)
-    if key == nil {
-        return nil, errorFromErrorQueue()
+    if bio == nil {
+        return nil, errors.New("failed creating bio")
     }
+    defer C.BIO_free(bio)
+
+    rsakey := C.PEM_read_bio_RSAPrivateKey(bio, nil, nil, nil)
+    if rsakey == nil {
+        return nil, errors.New("failed reading rsa key")
+    }
+    defer C.RSA_free(rsakey)
+
+    // convert to PKEY
+    key := C.EVP_PKEY_new()
+    if key == nil {
+        return nil, errors.New("failed converting to evp_pkey")
+    }
+    if C.EVP_PKEY_set1_RSA(key, (*C.struct_rsa_st)(rsakey)) != 1 {
+        C.EVP_PKEY_free(key)
+        return nil, errors.New("failed converting to evp_pkey")
+    }
+
     p := &pKey{key: key}
     runtime.SetFinalizer(p, func(p *pKey) {
         C.EVP_PKEY_free(p.key)
