@@ -1,4 +1,5 @@
 // Copyright (C) 2014 Space Monkey, Inc.
+// +build cgo
 
 // Package openssl is a light wrapper around OpenSSL for Go.
 // It strives to provide a near-drop-in replacement for the Go standard library

@@ -1,4 +1,5 @@
 // Copyright (C) 2014 Space Monkey, Inc.
+// +build cgo
 
 package openssl
 
