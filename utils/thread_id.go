@@ -5,7 +5,7 @@
 package utils
 
 import (
-    "unsafe"
+	"unsafe"
 )
 
 // ThreadId returns the current runtime's thread id. Thanks to Gustavo Niemeyer

@@ -4,13 +4,13 @@
 package openssl
 
 import (
-    "errors"
-    "net"
-    "time"
+	"errors"
+	"net"
+	"time"
 )
 
 const (
-    SSLRecordSize = 16 * 1024
+	SSLRecordSize = 16 * 1024
 )
 
 type Conn struct{}
@@ -37,11 +37,11 @@ type Ctx struct{}
 type SSLVersion int
 
 const (
-    SSLv3      SSLVersion = 0x02
-    TLSv1      SSLVersion = 0x03
-    TLSv1_1    SSLVersion = 0x04
-    TLSv1_2    SSLVersion = 0x05
-    AnyVersion SSLVersion = 0x06
+	SSLv3      SSLVersion = 0x02
+	TLSv1      SSLVersion = 0x03
+	TLSv1_1    SSLVersion = 0x04
+	TLSv1_2    SSLVersion = 0x05
+	AnyVersion SSLVersion = 0x06
 )
 
 func NewCtxWithVersion(version SSLVersion) (*Ctx, error)
@@ -61,13 +61,13 @@ func (c *Ctx) LoadVerifyLocations(ca_file string, ca_path string) error
 type Options int
 
 const (
-    NoCompression                      Options = 0
-    NoSSLv2                            Options = 0
-    NoSSLv3                            Options = 0
-    NoTLSv1                            Options = 0
-    CipherServerPreference             Options = 0
-    NoSessionResumptionOrRenegotiation Options = 0
-    NoTicket                           Options = 0
+	NoCompression                      Options = 0
+	NoSSLv2                            Options = 0
+	NoSSLv3                            Options = 0
+	NoTLSv1                            Options = 0
+	CipherServerPreference             Options = 0
+	NoSessionResumptionOrRenegotiation Options = 0
+	NoTicket                           Options = 0
 )
 
 func (c *Ctx) SetOptions(options Options) Options
@@ -75,7 +75,7 @@ func (c *Ctx) SetOptions(options Options) Options
 type Modes int
 
 const (
-    ReleaseBuffers Modes = 0
+	ReleaseBuffers Modes = 0
 )
 
 func (c *Ctx) SetMode(modes Modes) Modes
@@ -83,10 +83,10 @@ func (c *Ctx) SetMode(modes Modes) Modes
 type VerifyOptions int
 
 const (
-    VerifyNone             VerifyOptions = 0
-    VerifyPeer             VerifyOptions = 0
-    VerifyFailIfNoPeerCert VerifyOptions = 0
-    VerifyClientOnce       VerifyOptions = 0
+	VerifyNone             VerifyOptions = 0
+	VerifyPeer             VerifyOptions = 0
+	VerifyFailIfNoPeerCert VerifyOptions = 0
+	VerifyClientOnce       VerifyOptions = 0
 )
 
 func (c *Ctx) SetVerify(options VerifyOptions)
@@ -98,27 +98,27 @@ func (c *Ctx) SetCipherList(list string) error
 type SessionCacheModes int
 
 const (
-    SessionCacheOff    SessionCacheModes = 0
-    SessionCacheClient SessionCacheModes = 0
-    SessionCacheServer SessionCacheModes = 0
-    SessionCacheBoth   SessionCacheModes = 0
-    NoAutoClear        SessionCacheModes = 0
-    NoInternalLookup   SessionCacheModes = 0
-    NoInternalStore    SessionCacheModes = 0
-    NoInternal         SessionCacheModes = 0
+	SessionCacheOff    SessionCacheModes = 0
+	SessionCacheClient SessionCacheModes = 0
+	SessionCacheServer SessionCacheModes = 0
+	SessionCacheBoth   SessionCacheModes = 0
+	NoAutoClear        SessionCacheModes = 0
+	NoInternalLookup   SessionCacheModes = 0
+	NoInternalStore    SessionCacheModes = 0
+	NoInternal         SessionCacheModes = 0
 )
 
 func (c *Ctx) SetSessionCacheMode(modes SessionCacheModes) SessionCacheModes
 
 var (
-    ValidationError = errors.New("Host validation error")
+	ValidationError = errors.New("Host validation error")
 )
 
 type CheckFlags int
 
 const (
-    AlwaysCheckSubject CheckFlags = 0
-    NoWildcards        CheckFlags = 0
+	AlwaysCheckSubject CheckFlags = 0
+	NoWildcards        CheckFlags = 0
 )
 
 func (c *Certificate) CheckHost(host string, flags CheckFlags) error
@@ -127,15 +127,15 @@ func (c *Certificate) CheckIP(ip net.IP, flags CheckFlags) error
 func (c *Certificate) VerifyHostname(host string) error
 
 type PublicKey interface {
-    MarshalPKIXPublicKeyPEM() (pem_block []byte, err error)
-    MarshalPKIXPublicKeyDER() (der_block []byte, err error)
-    evpPKey() struct{}
+	MarshalPKIXPublicKeyPEM() (pem_block []byte, err error)
+	MarshalPKIXPublicKeyDER() (der_block []byte, err error)
+	evpPKey() struct{}
 }
 
 type PrivateKey interface {
-    PublicKey
-    MarshalPKCS1PrivateKeyPEM() (pem_block []byte, err error)
-    MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
+	PublicKey
+	MarshalPKCS1PrivateKeyPEM() (pem_block []byte, err error)
+	MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
 }
 
 func LoadPrivateKey(pem_block []byte) (PrivateKey, error)

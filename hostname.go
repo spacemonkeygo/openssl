@@ -23,20 +23,20 @@ extern int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
 import "C"
 
 import (
-    "errors"
-    "net"
-    "unsafe"
+	"errors"
+	"net"
+	"unsafe"
 )
 
 var (
-    ValidationError = errors.New("Host validation error")
+	ValidationError = errors.New("Host validation error")
 )
 
 type CheckFlags int
 
 const (
-    AlwaysCheckSubject CheckFlags = C.X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
-    NoWildcards        CheckFlags = C.X509_CHECK_FLAG_NO_WILDCARDS
+	AlwaysCheckSubject CheckFlags = C.X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
+	NoWildcards        CheckFlags = C.X509_CHECK_FLAG_NO_WILDCARDS
 )
 
 // CheckHost checks that the X509 certificate is signed for the provided
@@ -45,17 +45,17 @@ const (
 // Specifically returns ValidationError if the Certificate didn't match but
 // there was no internal error.
 func (c *Certificate) CheckHost(host string, flags CheckFlags) error {
-    chost := unsafe.Pointer(C.CString(host))
-    defer C.free(chost)
-    rv := C.X509_check_host(c.x, (*C.uchar)(chost), C.size_t(len(host)),
-        C.uint(flags))
-    if rv > 0 {
-        return nil
-    }
-    if rv == 0 {
-        return ValidationError
-    }
-    return errors.New("hostname validation had an internal failure")
+	chost := unsafe.Pointer(C.CString(host))
+	defer C.free(chost)
+	rv := C.X509_check_host(c.x, (*C.uchar)(chost), C.size_t(len(host)),
+		C.uint(flags))
+	if rv > 0 {
+		return nil
+	}
+	if rv == 0 {
+		return ValidationError
+	}
+	return errors.New("hostname validation had an internal failure")
 }
 
 // CheckEmail checks that the X509 certificate is signed for the provided
@@ -64,17 +64,17 @@ func (c *Certificate) CheckHost(host string, flags CheckFlags) error {
 // Specifically returns ValidationError if the Certificate didn't match but
 // there was no internal error.
 func (c *Certificate) CheckEmail(email string, flags CheckFlags) error {
-    cemail := unsafe.Pointer(C.CString(email))
-    defer C.free(cemail)
-    rv := C.X509_check_email(c.x, (*C.uchar)(cemail), C.size_t(len(email)),
-        C.uint(flags))
-    if rv > 0 {
-        return nil
-    }
-    if rv == 0 {
-        return ValidationError
-    }
-    return errors.New("email validation had an internal failure")
+	cemail := unsafe.Pointer(C.CString(email))
+	defer C.free(cemail)
+	rv := C.X509_check_email(c.x, (*C.uchar)(cemail), C.size_t(len(email)),
+		C.uint(flags))
+	if rv > 0 {
+		return nil
+	}
+	if rv == 0 {
+		return ValidationError
+	}
+	return errors.New("email validation had an internal failure")
 }
 
 // CheckIP checks that the X509 certificate is signed for the provided
@@ -83,16 +83,16 @@ func (c *Certificate) CheckEmail(email string, flags CheckFlags) error {
 // Specifically returns ValidationError if the Certificate didn't match but
 // there was no internal error.
 func (c *Certificate) CheckIP(ip net.IP, flags CheckFlags) error {
-    cip := unsafe.Pointer(&ip[0])
-    rv := C.X509_check_ip(c.x, (*C.uchar)(cip), C.size_t(len(ip)),
-        C.uint(flags))
-    if rv > 0 {
-        return nil
-    }
-    if rv == 0 {
-        return ValidationError
-    }
-    return errors.New("ip validation had an internal failure")
+	cip := unsafe.Pointer(&ip[0])
+	rv := C.X509_check_ip(c.x, (*C.uchar)(cip), C.size_t(len(ip)),
+		C.uint(flags))
+	if rv > 0 {
+		return nil
+	}
+	if rv == 0 {
+		return ValidationError
+	}
+	return errors.New("ip validation had an internal failure")
 }
 
 // VerifyHostname is a combination of CheckHost and CheckIP. If the provided
@@ -101,14 +101,14 @@ func (c *Certificate) CheckIP(ip net.IP, flags CheckFlags) error {
 // Specifically returns ValidationError if the Certificate didn't match but
 // there was no internal error.
 func (c *Certificate) VerifyHostname(host string) error {
-    var ip net.IP
-    if len(host) >= 3 && host[0] == '[' && host[len(host)-1] == ']' {
-        ip = net.ParseIP(host[1 : len(host)-1])
-    } else {
-        ip = net.ParseIP(host)
-    }
-    if ip != nil {
-        return c.CheckIP(ip, 0)
-    }
-    return c.CheckHost(host, 0)
+	var ip net.IP
+	if len(host) >= 3 && host[0] == '[' && host[len(host)-1] == ']' {
+		ip = net.ParseIP(host[1 : len(host)-1])
+	} else {
+		ip = net.ParseIP(host)
+	}
+	if ip != nil {
+		return c.CheckIP(ip, 0)
+	}
+	return c.CheckHost(host, 0)
 }
