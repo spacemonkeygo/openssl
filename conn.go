@@ -245,6 +245,16 @@ func (c *Conn) PeerCertificate() (*Certificate, error) {
 	return cert, nil
 }
 
+type ConnectionState struct {
+    Certificate *Certificate
+    CertificateError error
+}
+
+func (c *Conn) ConnectionState() (rv ConnectionState) {
+    rv.Certificate, rv.CertificateError = c.PeerCertificate()
+    return
+}
+
 func (c *Conn) shutdown() func() error {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
