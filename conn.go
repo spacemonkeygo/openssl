@@ -316,6 +316,9 @@ func (c *Conn) Close() error {
 }
 
 func (c *Conn) read(b []byte) (int, func() error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	if c.is_shutdown {
@@ -353,6 +356,9 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 }
 
 func (c *Conn) write(b []byte) (int, func() error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	if c.is_shutdown {

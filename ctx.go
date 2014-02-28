@@ -268,8 +268,11 @@ func (c *Ctx) SetVerifyDepth(depth int) {
 func (c *Ctx) SetSessionId(session_id []byte) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	if int(C.SSL_CTX_set_session_id_context(c.ctx,
-		(*C.uchar)(unsafe.Pointer(&session_id[0])),
+	var ptr *C.uchar
+	if len(session_id) > 0 {
+		ptr = (*C.uchar)(unsafe.Pointer(&session_id[0]))
+	}
+	if int(C.SSL_CTX_set_session_id_context(c.ctx, ptr,
 		C.uint(len(session_id)))) == 0 {
 		return errorFromErrorQueue()
 	}

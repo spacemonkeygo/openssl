@@ -119,6 +119,9 @@ func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
 
 // LoadPrivateKey loads a private key from a PEM-encoded block.
 func LoadPrivateKey(pem_block []byte) (PrivateKey, error) {
+	if len(pem_block) == 0 {
+		return nil, errors.New("empty pem block")
+	}
 	bio := C.BIO_new_mem_buf(unsafe.Pointer(&pem_block[0]),
 		C.int(len(pem_block)))
 	if bio == nil {
@@ -155,6 +158,9 @@ type Certificate struct {
 
 // LoadCertificate loads an X509 certificate from a PEM-encoded block.
 func LoadCertificate(pem_block []byte) (*Certificate, error) {
+	if len(pem_block) == 0 {
+		return nil, errors.New("empty pem block")
+	}
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	bio := C.BIO_new_mem_buf(unsafe.Pointer(&pem_block[0]),
