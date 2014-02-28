@@ -155,7 +155,8 @@ func LoadPrivateKey(pem_block []byte) (PrivateKey, error) {
 }
 
 type Certificate struct {
-	x *C.X509
+	x   *C.X509
+	ref interface{}
 }
 
 // LoadCertificate loads an X509 certificate from a PEM-encoded block.
