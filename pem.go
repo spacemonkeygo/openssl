@@ -5,6 +5,8 @@ package openssl
 
 // #include <openssl/ssl.h>
 // #include <openssl/conf.h>
+//
+// void OPENSSL_free_not_a_macro(void *ref) { OPENSSL_free(ref); }
 import "C"
 
 import (
@@ -201,4 +203,15 @@ func (c *Certificate) PublicKey() (PublicKey, error) {
 		C.EVP_PKEY_free(key.key)
 	})
 	return key, nil
+}
+
+// GetSerialNumberHex returns the certificate's serial number in hex format
+func (c *Certificate) GetSerialNumberHex() (serial string) {
+	asn1_i := C.X509_get_serialNumber(c.x)
+	bignum := C.ASN1_INTEGER_to_BN(asn1_i, nil)
+	hex := C.BN_bn2hex(bignum)
+	serial = C.GoString(hex)
+	C.BN_free(bignum)
+	C.OPENSSL_free_not_a_macro(unsafe.Pointer(hex))
+	return
 }
