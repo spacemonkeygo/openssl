@@ -246,13 +246,13 @@ func (c *Conn) PeerCertificate() (*Certificate, error) {
 }
 
 type ConnectionState struct {
-    Certificate *Certificate
-    CertificateError error
+	Certificate      *Certificate
+	CertificateError error
 }
 
 func (c *Conn) ConnectionState() (rv ConnectionState) {
-    rv.Certificate, rv.CertificateError = c.PeerCertificate()
-    return
+	rv.Certificate, rv.CertificateError = c.PeerCertificate()
+	return
 }
 
 func (c *Conn) shutdown() func() error {
