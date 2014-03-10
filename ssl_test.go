@@ -291,12 +291,28 @@ func StdlibConstructor(t testing.TB, server_conn, client_conn net.Conn) (
 	return server, client
 }
 
+func passThruVerify(t testing.TB) func(bool, *CertificateStoreCtx) bool {
+	x := func(ok bool, store *CertificateStoreCtx) bool {
+		cert := store.GetCurrentCert()
+		if cert == nil {
+			t.Fatalf("Could not obtain cert from store\n")
+		}
+		sn := cert.GetSerialNumberHex()
+		if len(sn) == 0 {
+			t.Fatalf("Could not obtain serial number from cert")
+		}
+		return ok
+	}
+	return x
+}
+
 func OpenSSLConstructor(t testing.TB, server_conn, client_conn net.Conn) (
 	server, client HandshakingConn) {
 	ctx, err := NewCtx()
 	if err != nil {
 		t.Fatal(err)
 	}
+	ctx.SetVerify(VerifyNone, passThruVerify(t))
 	key, err := LoadPrivateKey(keyBytes)
 	if err != nil {
 		t.Fatal(err)

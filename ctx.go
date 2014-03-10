@@ -3,44 +3,71 @@
 
 package openssl
 
-// #include <openssl/ssl.h>
-// #include <openssl/conf.h>
+//#include <openssl/crypto.h>
+//#include <openssl/ssl.h>
+//#include <openssl/err.h>
+//#include <openssl/conf.h>
 //
-// long SSL_CTX_set_options_not_a_macro(SSL_CTX* ctx, long options) {
-//    return SSL_CTX_set_options(ctx, options);
-// }
+//static long SSL_CTX_set_options_not_a_macro(SSL_CTX* ctx, long options) {
+//   return SSL_CTX_set_options(ctx, options);
+//}
 //
-// long SSL_CTX_set_mode_not_a_macro(SSL_CTX* ctx, long modes) {
-//    return SSL_CTX_set_mode(ctx, modes);
-// }
+//static long SSL_CTX_set_mode_not_a_macro(SSL_CTX* ctx, long modes) {
+//   return SSL_CTX_set_mode(ctx, modes);
+//}
 //
-// long SSL_CTX_set_session_cache_mode_not_a_macro(SSL_CTX* ctx, long modes) {
-//    return SSL_CTX_set_session_cache_mode(ctx, modes);
-// }
+//static long SSL_CTX_set_session_cache_mode_not_a_macro(SSL_CTX* ctx, long modes) {
+//   return SSL_CTX_set_session_cache_mode(ctx, modes);
+//}
 //
-// #ifndef SSL_MODE_RELEASE_BUFFERS
-// #define SSL_MODE_RELEASE_BUFFERS 0
-// #endif
-// #ifndef SSL_OP_NO_COMPRESSION
-// #define SSL_OP_NO_COMPRESSION 0
-// #endif
-// #ifndef TLSv1_1_method
-// const SSL_METHOD *TLSv1_1_method() { return NULL; }
-// #endif
-// #ifndef TLSv1_2_method
-// const SSL_METHOD *TLSv1_2_method() { return NULL; }
-// #endif
+//static int CRYPTO_add_not_a_macro(int *pointer,int amount,int type) {
+//   return CRYPTO_add(pointer, amount, type);
+//}
+//
+//#ifndef SSL_MODE_RELEASE_BUFFERS
+//#define SSL_MODE_RELEASE_BUFFERS 0
+//#endif
+//#ifndef SSL_OP_NO_COMPRESSION
+//#define SSL_OP_NO_COMPRESSION 0
+//#endif
+//static const SSL_METHOD *OUR_TLSv1_1_method() {
+//#ifndef TLSv1_1_method
+//    return NULL;
+//#endif
+//    return TLSv1_1_method();
+//}
+//static const SSL_METHOD *OUR_TLSv1_2_method() {
+//#ifndef TLSv1_2_method
+//    return NULL;
+//#endif
+//    return TLSv1_2_method();
+//}
+//
+//extern int verify_cb(int ok, X509_STORE_CTX* store);
 import "C"
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
 	"runtime"
 	"unsafe"
 )
 
+var (
+	ssl_ctx_idx = C.SSL_CTX_get_ex_new_index(0, nil, nil, nil, nil)
+)
+
 type Ctx struct {
-	ctx *C.SSL_CTX
+	ctx       *C.SSL_CTX
+	verify_cb VerifyCallback
+}
+
+//export get_ssl_ctx_idx
+func get_ssl_ctx_idx() C.int {
+	return ssl_ctx_idx
 }
 
 func newCtx(method *C.SSL_METHOD) (*Ctx, error) {
@@ -51,6 +78,7 @@ func newCtx(method *C.SSL_METHOD) (*Ctx, error) {
 		return nil, errorFromErrorQueue()
 	}
 	c := &Ctx{ctx: ctx}
+	C.SSL_CTX_set_ex_data(ctx, get_ssl_ctx_idx(), unsafe.Pointer(c))
 	runtime.SetFinalizer(c, func(c *Ctx) {
 		C.SSL_CTX_free(c.ctx)
 	})
@@ -77,9 +105,9 @@ func NewCtxWithVersion(version SSLVersion) (*Ctx, error) {
 	case TLSv1:
 		method = C.TLSv1_method()
 	case TLSv1_1:
-		method = C.TLSv1_1_method()
+		method = C.OUR_TLSv1_1_method()
 	case TLSv1_2:
-		method = C.TLSv1_2_method()
+		method = C.OUR_TLSv1_2_method()
 	case AnyVersion:
 		method = C.SSLv23_method()
 	}
@@ -187,6 +215,42 @@ func (s *CertificateStore) AddCertificate(cert *Certificate) error {
 	return nil
 }
 
+type CertificateStoreCtx struct {
+	ctx     *C.X509_STORE_CTX
+	ssl_ctx *Ctx
+}
+
+func (self *CertificateStoreCtx) Err() error {
+	code := C.X509_STORE_CTX_get_error(self.ctx)
+	if code == C.X509_V_OK {
+		return nil
+	}
+	return fmt.Errorf("openssl: %s",
+		C.GoString(C.X509_verify_cert_error_string(C.long(code))))
+}
+
+func (self *CertificateStoreCtx) Depth() int {
+	return int(C.X509_STORE_CTX_get_error_depth(self.ctx))
+}
+
+// the certicate returned is only valid for the lifetime of the underlying
+// X509_STORE_CTX
+func (self *CertificateStoreCtx) GetCurrentCert() *Certificate {
+	x509 := C.X509_STORE_CTX_get_current_cert(self.ctx)
+	if x509 == nil {
+		return nil
+	}
+	// add a ref
+	C.CRYPTO_add_not_a_macro(&x509.references, 1, C.CRYPTO_LOCK_X509)
+	cert := &Certificate{
+		x: x509,
+	}
+	runtime.SetFinalizer(cert, func(c *Certificate) {
+		C.X509_free(c.x)
+	})
+	return cert
+}
+
 // LoadVerifyLocations tells the context to trust all certificate authorities
 // provided in either the ca_file or the ca_path.
 // See http://www.openssl.org/docs/ssl/SSL_CTX_load_verify_locations.html for
@@ -251,11 +315,50 @@ const (
 	VerifyClientOnce       VerifyOptions = C.SSL_VERIFY_CLIENT_ONCE
 )
 
+type VerifyCallback func(ok bool, store *CertificateStoreCtx) bool
+
+//export verify_cb_thunk
+func verify_cb_thunk(p unsafe.Pointer, ok C.int, ctx *C.X509_STORE_CTX) C.int {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("openssl: verify callback panic'd: %v", err)
+			os.Exit(1)
+		}
+	}()
+	verify_cb := (*Ctx)(p).verify_cb
+	// set up defaults just in case verify_cb is nil
+	if verify_cb != nil {
+		store := &CertificateStoreCtx{ctx: ctx}
+		if verify_cb(ok == 1, store) {
+			ok = 1
+		} else {
+			ok = 0
+		}
+	}
+	return ok
+}
+
 // SetVerify controls peer verification settings. See
 // http://www.openssl.org/docs/ssl/SSL_CTX_set_verify.html
-func (c *Ctx) SetVerify(options VerifyOptions) {
-	// TODO: take a callback
-	C.SSL_CTX_set_verify(c.ctx, C.int(options), nil)
+func (c *Ctx) SetVerify(options VerifyOptions, verify_cb VerifyCallback) {
+	c.verify_cb = verify_cb
+	if verify_cb != nil {
+		C.SSL_CTX_set_verify(c.ctx, C.int(options), (*[0]byte)(C.verify_cb))
+	} else {
+		C.SSL_CTX_set_verify(c.ctx, C.int(options), nil)
+	}
+}
+
+func (c *Ctx) SetVerifyMode(options VerifyOptions) {
+	c.SetVerify(options, c.verify_cb)
+}
+
+func (c *Ctx) SetVerifyCallback(verify_cb VerifyCallback) {
+	c.SetVerify(c.VerifyMode(), verify_cb)
+}
+
+func (c *Ctx) VerifyMode() VerifyOptions {
+	return VerifyOptions(C.SSL_CTX_get_verify_mode(c.ctx))
 }
 
 // SetVerifyDepth controls how many certificates deep the certificate

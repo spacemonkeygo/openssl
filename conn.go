@@ -35,6 +35,7 @@ var (
 type Conn struct {
 	conn             net.Conn
 	ssl              *C.SSL
+	ctx              *Ctx // for gc
 	into_ssl         *readBio
 	from_ssl         *writeBio
 	is_shutdown      bool
@@ -77,6 +78,7 @@ func newConn(conn net.Conn, ctx *Ctx) (*Conn, error) {
 	c := &Conn{
 		conn:     conn,
 		ssl:      ssl,
+		ctx:      ctx,
 		into_ssl: into_ssl,
 		from_ssl: from_ssl}
 	runtime.SetFinalizer(c, func(c *Conn) {
