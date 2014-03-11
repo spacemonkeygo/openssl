@@ -3,10 +3,29 @@
 
 package openssl
 
+// #include <openssl/evp.h>
 // #include <openssl/ssl.h>
 // #include <openssl/conf.h>
 //
 // void OPENSSL_free_not_a_macro(void *ref) { OPENSSL_free(ref); }
+//
+// int EVP_SignInit_not_a_macro(EVP_MD_CTX *ctx, const EVP_MD *type) {
+//     return EVP_SignInit(ctx, type);
+// }
+//
+// int EVP_SignUpdate_not_a_macro(EVP_MD_CTX *ctx, const void *d,
+//   unsigned int cnt) {
+//     return EVP_SignUpdate(ctx, d, cnt);
+// }
+//
+// int EVP_VerifyInit_not_a_macro(EVP_MD_CTX *ctx, const EVP_MD *type) {
+//     return EVP_VerifyInit(ctx, type);
+// }
+//
+// int EVP_VerifyUpdate_not_a_macro(EVP_MD_CTX *ctx, const void *d,
+//   unsigned int cnt) {
+//     return EVP_VerifyUpdate(ctx, d, cnt);
+// }
 import "C"
 
 import (
@@ -16,7 +35,16 @@ import (
 	"unsafe"
 )
 
+type Method *C.EVP_MD
+
+var (
+	SHA256 Method = C.EVP_sha256()
+)
+
 type PublicKey interface {
+	// Verifies the data signature using PKCS1.15
+	VerifyPKCS1v15(method Method, data, sig []byte) error
+
 	// MarshalPKIXPublicKeyPEM converts the public key to PEM-encoded PKIX
 	// format
 	MarshalPKIXPublicKeyPEM() (pem_block []byte, err error)
@@ -30,6 +58,9 @@ type PublicKey interface {
 
 type PrivateKey interface {
 	PublicKey
+
+	// Signs the data using PKCS1.15
+	SignPKCS1v15(Method, []byte) ([]byte, error)
 
 	// MarshalPKCS1PrivateKeyPEM converts the private key to PEM-encoded PKCS1
 	// format
@@ -45,6 +76,50 @@ type pKey struct {
 }
 
 func (key *pKey) evpPKey() *C.EVP_PKEY { return key.key }
+
+func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
+	var ctx C.EVP_MD_CTX
+	C.EVP_MD_CTX_init(&ctx)
+	defer C.EVP_MD_CTX_cleanup(&ctx)
+
+	if 1 != C.EVP_SignInit_not_a_macro(&ctx, method) {
+		return nil, errors.New("signpkcs1v15: failed to init signature")
+	}
+	if len(data) > 0 {
+		if 1 != C.EVP_SignUpdate_not_a_macro(
+			&ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
+			return nil, errors.New("signpkcs1v15: failed to update signature")
+		}
+	}
+	sig := make([]byte, C.EVP_PKEY_size(key.key))
+	var sigblen C.uint
+	if 1 != C.EVP_SignFinal(&ctx,
+		((*C.uchar)(unsafe.Pointer(&sig[0]))), &sigblen, key.key) {
+		return nil, errors.New("signpkcs1v15: failed to finalize signature")
+	}
+	return sig[:sigblen], nil
+}
+
+func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
+	var ctx C.EVP_MD_CTX
+	C.EVP_MD_CTX_init(&ctx)
+	defer C.EVP_MD_CTX_cleanup(&ctx)
+
+	if 1 != C.EVP_VerifyInit_not_a_macro(&ctx, method) {
+		return errors.New("verifypkcs1v15: failed to init verify")
+	}
+	if len(data) > 0 {
+		if 1 != C.EVP_VerifyUpdate_not_a_macro(
+			&ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
+			return errors.New("verifypkcs1v15: failed to update verify")
+		}
+	}
+	if 1 != C.EVP_VerifyFinal(&ctx,
+		((*C.uchar)(unsafe.Pointer(&sig[0]))), C.uint(len(sig)), key.key) {
+		return errors.New("verifypkcs1v15: failed to finalize verify")
+	}
+	return nil
+}
 
 func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
 	err error) {
