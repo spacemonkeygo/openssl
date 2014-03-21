@@ -229,6 +229,41 @@ func LoadPrivateKey(pem_block []byte) (PrivateKey, error) {
 	return p, nil
 }
 
+// LoadPublicKey loads a public key from a PEM-encoded block.
+func LoadPublicKey(pem_block []byte) (PublicKey, error) {
+	if len(pem_block) == 0 {
+		return nil, errors.New("empty pem block")
+	}
+	bio := C.BIO_new_mem_buf(unsafe.Pointer(&pem_block[0]),
+		C.int(len(pem_block)))
+	if bio == nil {
+		return nil, errors.New("failed creating bio")
+	}
+	defer C.BIO_free(bio)
+
+	rsakey := C.PEM_read_bio_RSAPublicKey(bio, nil, nil, nil)
+	if rsakey == nil {
+		return nil, errors.New("failed reading rsa key")
+	}
+	defer C.RSA_free(rsakey)
+
+	// convert to PKEY
+	key := C.EVP_PKEY_new()
+	if key == nil {
+		return nil, errors.New("failed converting to evp_pkey")
+	}
+	if C.EVP_PKEY_set1_RSA(key, (*C.struct_rsa_st)(rsakey)) != 1 {
+		C.EVP_PKEY_free(key)
+		return nil, errors.New("failed converting to evp_pkey")
+	}
+
+	p := &pKey{key: key}
+	runtime.SetFinalizer(p, func(p *pKey) {
+		C.EVP_PKEY_free(p.key)
+	})
+	return p, nil
+}
+
 type Certificate struct {
 	x   *C.X509
 	ref interface{}
