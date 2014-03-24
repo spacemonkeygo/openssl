@@ -20,13 +20,16 @@ import (
 )
 
 type SHA1Hash struct {
-	ctx C.EVP_MD_CTX
+	ctx    C.EVP_MD_CTX
+	engine *Engine
 }
 
-func NewSHA1Hash() (*SHA1Hash, error) {
-	hash := new(SHA1Hash)
+func NewSHA1Hash() (*SHA1Hash, error) { return NewSHA1HashWithEngine(nil) }
+
+func NewSHA1HashWithEngine(e *Engine) (*SHA1Hash, error) {
+	hash := &SHA1Hash{engine: e}
 	C.EVP_MD_CTX_init(&hash.ctx)
-	runtime.SetFinalizer(hash, func(h *SHA1Hash) { h.Close() })
+	runtime.SetFinalizer(hash, func(hash *SHA1Hash) { hash.Close() })
 	if err := hash.Reset(); err != nil {
 		return nil, err
 	}
@@ -37,8 +40,15 @@ func (s *SHA1Hash) Close() {
 	C.EVP_MD_CTX_cleanup(&s.ctx)
 }
 
+func engineRef(e *Engine) *C.ENGINE {
+	if e == nil {
+		return nil
+	}
+	return e.e
+}
+
 func (s *SHA1Hash) Reset() error {
-	if 1 != C.EVP_DigestInit_ex(&s.ctx, C.EVP_sha1(), nil) {
+	if 1 != C.EVP_DigestInit_ex(&s.ctx, C.EVP_sha1(), engineRef(s.engine)) {
 		return errors.New("openssl: sha1: cannot init digest ctx")
 	}
 	return nil
