@@ -138,11 +138,11 @@ type PrivateKey interface {
 	MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
 }
 
-func LoadPrivateKey(pem_block []byte) (PrivateKey, error)
+func LoadPrivateKeyFromPEM(pem_block []byte) (PrivateKey, error)
 
 type Certificate struct{}
 
-func LoadCertificate(pem_block []byte) (*Certificate, error)
+func LoadCertificateFromPEM(pem_block []byte) (*Certificate, error)
 
 func (c *Certificate) MarshalPEM() (pem_block []byte, err error)
 

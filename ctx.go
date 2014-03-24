@@ -142,7 +142,7 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 		return nil, err
 	}
 
-	cert, err := LoadCertificate(cert_bytes)
+	cert, err := LoadCertificateFromPEM(cert_bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 		return nil, err
 	}
 
-	key, err := LoadPrivateKey(key_bytes)
+	key, err := LoadPrivateKeyFromPEM(key_bytes)
 	if err != nil {
 		return nil, err
 	}

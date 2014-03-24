@@ -313,7 +313,7 @@ func OpenSSLConstructor(t testing.TB, server_conn, client_conn net.Conn) (
 		t.Fatal(err)
 	}
 	ctx.SetVerify(VerifyNone, passThruVerify(t))
-	key, err := LoadPrivateKey(keyBytes)
+	key, err := LoadPrivateKeyFromPEM(keyBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func OpenSSLConstructor(t testing.TB, server_conn, client_conn net.Conn) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	cert, err := LoadCertificate(certBytes)
+	cert, err := LoadCertificateFromPEM(certBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -592,7 +592,7 @@ func TestOpenSSLLotsOfConns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := LoadPrivateKey(keyBytes)
+	key, err := LoadPrivateKeyFromPEM(keyBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -600,7 +600,7 @@ func TestOpenSSLLotsOfConns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cert, err := LoadCertificate(certBytes)
+	cert, err := LoadCertificateFromPEM(certBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
