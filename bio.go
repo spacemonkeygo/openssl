@@ -106,7 +106,13 @@ func loadWritePtr(b *C.BIO) *writeBio {
 }
 
 //export writeBioWrite
-func writeBioWrite(b *C.BIO, data *C.char, size C.int) C.int {
+func writeBioWrite(b *C.BIO, data *C.char, size C.int) (rc C.int) {
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Critf("openssl: writeBioWrite panic'd: %v", err)
+			rc = -1
+		}
+	}()
 	ptr := loadWritePtr(b)
 	if ptr == nil || data == nil || size < 0 {
 		return -1
@@ -119,7 +125,14 @@ func writeBioWrite(b *C.BIO, data *C.char, size C.int) C.int {
 }
 
 //export writeBioCtrl
-func writeBioCtrl(b *C.BIO, cmd C.int, arg1 C.long, arg2 unsafe.Pointer) C.long {
+func writeBioCtrl(b *C.BIO, cmd C.int, arg1 C.long, arg2 unsafe.Pointer) (
+	rc C.long) {
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Critf("openssl: writeBioCtrl panic'd: %v", err)
+			rc = -1
+		}
+	}()
 	switch cmd {
 	case C.BIO_CTRL_WPENDING:
 		return writeBioPending(b)
@@ -186,7 +199,13 @@ func loadReadPtr(b *C.BIO) *readBio {
 }
 
 //export readBioRead
-func readBioRead(b *C.BIO, data *C.char, size C.int) C.int {
+func readBioRead(b *C.BIO, data *C.char, size C.int) (rc C.int) {
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Critf("openssl: readBioRead panic'd: %v", err)
+			rc = -1
+		}
+	}()
 	ptr := loadReadPtr(b)
 	if ptr == nil || size < 0 {
 		return -1
@@ -210,7 +229,15 @@ func readBioRead(b *C.BIO, data *C.char, size C.int) C.int {
 }
 
 //export readBioCtrl
-func readBioCtrl(b *C.BIO, cmd C.int, arg1 C.long, arg2 unsafe.Pointer) C.long {
+func readBioCtrl(b *C.BIO, cmd C.int, arg1 C.long, arg2 unsafe.Pointer) (
+	rc C.long) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Critf("openssl: readBioCtrl panic'd: %v", err)
+			rc = -1
+		}
+	}()
 	switch cmd {
 	case C.BIO_CTRL_PENDING:
 		return readBioPending(b)
