@@ -58,12 +58,24 @@ package openssl
 #include <openssl/evp.h>
 #include <openssl/engine.h>
 
-extern unsigned long sslThreadId();
-extern void sslMutexOp(int mode, int n, char *file, int line);
+extern int Goopenssl_init_locks();
+extern void Goopenssl_thread_locking_callback(int, int, const char*, int);
+
+static int Goopenssl_init_threadsafety() {
+	// Set up OPENSSL thread safety callbacks.  We only set the locking
+	// callback because the default id callback implementation is good
+	// enough for us.
+	int rc = Goopenssl_init_locks();
+	if (rc == 0) {
+		CRYPTO_set_locking_callback(Goopenssl_thread_locking_callback);
+	}
+	return rc;
+}
 
 static void OpenSSL_add_all_algorithms_not_a_macro() {
-  OpenSSL_add_all_algorithms();
+	OpenSSL_add_all_algorithms();
 }
+
 */
 import "C"
 
@@ -72,8 +84,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-
-	"code.spacemonkey.com/go/openssl/utils"
 )
 
 var (
@@ -86,11 +96,10 @@ func init() {
 	C.SSL_load_error_strings()
 	C.SSL_library_init()
 	C.OpenSSL_add_all_algorithms_not_a_macro()
-	sslMutexes = make([]sync.Mutex, int(C.CRYPTO_num_locks()))
-	C.CRYPTO_set_id_callback((*[0]byte)(C.sslThreadId))
-	C.CRYPTO_set_locking_callback((*[0]byte)(C.sslMutexOp))
-
-	// TODO: support dynlock callbacks
+	rc := C.Goopenssl_init_threadsafety()
+	if rc != 0 {
+		panic(fmt.Errorf("Goopenssl_init_locks failed with %d", rc))
+	}
 }
 
 // errorFromErrorQueue needs to run in the same OS thread as the operation
@@ -108,18 +117,4 @@ func errorFromErrorQueue() error {
 			C.GoString(C.ERR_reason_error_string(err))))
 	}
 	return errors.New(fmt.Sprintf("SSL errors: %s", strings.Join(errs, "\n")))
-}
-
-//export sslMutexOp
-func sslMutexOp(mode, n C.int, file *C.char, line C.int) {
-	if mode&C.CRYPTO_LOCK > 0 {
-		sslMutexes[n].Lock()
-	} else {
-		sslMutexes[n].Unlock()
-	}
-}
-
-//export sslThreadId
-func sslThreadId() C.ulong {
-	return C.ulong(uintptr(utils.ThreadId()))
 }
