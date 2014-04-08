@@ -9,9 +9,17 @@
 //    inefficient. This simple OpenSSL wrapper can often do at least 2x with
 //    the same cipher and protocol.
 //
-//    On my lappytop, I get the following speeds for AES128-SHA
-//      BenchmarkStdlibThroughput      50000     58685 ns/op    17.45 MB/s
-//      BenchmarkOpenSSLThroughput    100000     20772 ns/op    49.30 MB/s
+//    On my lappytop, I get the following benchmarking speeds:
+//    BenchmarkSHA1Large_openssl      1000  2611282 ns/op  401.56 MB/s
+//    BenchmarkSHA1Large_stdlib        500  3963983 ns/op  264.53 MB/s
+//    BenchmarkSHA1Small_openssl   1000000     3476 ns/op    0.29 MB/s
+//    BenchmarkSHA1Small_stdlib    5000000      550 ns/op    1.82 MB/s
+//    BenchmarkSHA256Large_openssl     200  8085314 ns/op  129.69 MB/s
+//    BenchmarkSHA256Large_stdlib      100 18948189 ns/op   55.34 MB/s
+//    BenchmarkSHA256Small_openssl 1000000     4262 ns/op    0.23 MB/s
+//    BenchmarkSHA256Small_stdlib  1000000     1444 ns/op    0.69 MB/s
+//    BenchmarkOpenSSLThroughput    100000    21634 ns/op   47.33 MB/s
+//    BenchmarkStdlibThroughput      50000    58974 ns/op   17.36 MB/s
 //
 //  * Interoperability - many systems support OpenSSL with a variety of plugins
 //    and modules for things, such as hardware acceleration in embedded devices
@@ -20,10 +28,12 @@
 //    configuration of corner cases and backwards compatibility (such as
 //    support of SSLv2)
 //
-//  * Security - OpenSSL has been reviewed by security experts thoroughly.
-//    According to its author, the same can not be said of the standard
-//    library. Though this wrapper has not received equal scrutiny, it is very
-//    small and easy to check.
+//  * Security - According to the author of the standard library's TLS
+//    implementation, Go's TLS library is vulnerable to timing attacks and has
+//    not received the same amount of scrutiny that OpenSSL has. While OpenSSL
+//    has indeed had security problems recently, the incentive to fix OpenSSL
+//    security problems is shared by many distributors and services, and
+//    OpenSSL is fixed quickly.
 //
 // Starting an HTTP server that uses OpenSSL is very easy. It's as simple as:
 //  log.Fatal(openssl.ListenAndServeTLS(
@@ -47,8 +57,9 @@
 //  }
 //  conn, err := openssl.Dial("tcp", "localhost:7777", ctx, 0)
 //
-// TODO/Help wanted: make an easy interface to the net/http client library that
-// supports all the fiddly bits like proxies and connection pools and what-not.
+// TODO/Help wanted: To get this library to work with net/http's client, we've
+//  had to fork net/http. It would be nice if an alternate http client library
+//  supported the generality needed to use OpenSSL instead of crypto/tls.
 package openssl
 
 /*
