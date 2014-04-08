@@ -46,12 +46,6 @@ static BIO_METHOD readBioMethod = {
     NULL};
 
 static BIO_METHOD* BIO_s_readBio() { return &readBioMethod; }
-
-static void BIO_clear_retry_flags_not_a_macro(BIO *b) {
-    BIO_clear_retry_flags(b);
-}
-
-static void BIO_set_retry_read_not_a_macro(BIO *b) { BIO_set_retry_read(b); }
 */
 import "C"
 
@@ -105,6 +99,16 @@ func loadWritePtr(b *C.BIO) *writeBio {
 	return (*writeBio)(unsafe.Pointer(b.ptr))
 }
 
+func bioClearRetryFlags(b *C.BIO) {
+	// from BIO_clear_retry_flags and BIO_clear_flags
+	b.flags &= ^(C.BIO_FLAGS_RWS | C.BIO_FLAGS_SHOULD_RETRY)
+}
+
+func bioSetRetryRead(b *C.BIO) {
+	// from BIO_set_retry_read and BIO_set_flags
+	b.flags |= (C.BIO_FLAGS_READ | C.BIO_FLAGS_SHOULD_RETRY)
+}
+
 //export writeBioWrite
 func writeBioWrite(b *C.BIO, data *C.char, size C.int) (rc C.int) {
 	defer func() {
@@ -119,7 +123,7 @@ func writeBioWrite(b *C.BIO, data *C.char, size C.int) (rc C.int) {
 	}
 	ptr.data_mtx.Lock()
 	defer ptr.data_mtx.Unlock()
-	C.BIO_clear_retry_flags_not_a_macro(b)
+	bioClearRetryFlags(b)
 	ptr.buf = append(ptr.buf, nonCopyCString(data, size)...)
 	return size
 }
@@ -212,12 +216,12 @@ func readBioRead(b *C.BIO, data *C.char, size C.int) (rc C.int) {
 	}
 	ptr.data_mtx.Lock()
 	defer ptr.data_mtx.Unlock()
-	C.BIO_clear_retry_flags_not_a_macro(b)
+	bioClearRetryFlags(b)
 	if len(ptr.buf) == 0 {
 		if ptr.eof {
 			return 0
 		}
-		C.BIO_set_retry_read_not_a_macro(b)
+		bioSetRetryRead(b)
 		return -1
 	}
 	if size == 0 || data == nil {
