@@ -248,8 +248,8 @@ func (self *CertificateStoreCtx) GetCurrentCert() *Certificate {
 	cert := &Certificate{
 		x: x509,
 	}
-	runtime.SetFinalizer(cert, func(c *Certificate) {
-		C.X509_free(c.x)
+	runtime.SetFinalizer(cert, func(cert *Certificate) {
+		C.X509_free(cert.x)
 	})
 	return cert
 }
