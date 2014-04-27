@@ -11,6 +11,9 @@ package openssl
 // X509 *sk_X509_value_not_a_macro(STACK_OF(X509)* sk, int i) {
 //    return sk_X509_value(sk, i);
 // }
+// long SSL_set_tlsext_host_name_not_a_macro(SSL *ssl, const char *name) {
+//    return SSL_set_tlsext_host_name(ssl, name);
+// }
 import "C"
 
 import (
@@ -464,4 +467,15 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 
 func (c *Conn) UnderlyingConn() net.Conn {
 	return c.conn
+}
+
+func (c *Conn) SetTlsExtHostName(name string) error {
+	bname := []byte(name)
+	cname := (*C.char)(unsafe.Pointer(&bname[0]))
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	if C.SSL_set_tlsext_host_name_not_a_macro(c.ssl, cname) == 0 {
+		return errorFromErrorQueue()
+	}
+	return nil
 }
