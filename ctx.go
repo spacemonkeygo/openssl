@@ -31,16 +31,18 @@ package openssl
 //#define SSL_OP_NO_COMPRESSION 0
 //#endif
 //static const SSL_METHOD *OUR_TLSv1_1_method() {
-//#ifndef TLSv1_1_method
+//#ifdef TLS1_1_VERSION
+//    return TLSv1_1_method();
+//#else
 //    return NULL;
 //#endif
-//    return TLSv1_1_method();
 //}
 //static const SSL_METHOD *OUR_TLSv1_2_method() {
-//#ifndef TLSv1_2_method
+//#ifdef TLS1_2_VERSION
+//    return TLSv1_2_method();
+//#else
 //    return NULL;
 //#endif
-//    return TLSv1_2_method();
 //}
 //
 //extern int verify_cb(int ok, X509_STORE_CTX* store);
