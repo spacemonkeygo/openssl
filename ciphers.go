@@ -58,11 +58,11 @@ type cipherCtx struct {
 }
 
 type encryptionCipherCtx struct {
-	cipherCtx
+	*cipherCtx
 }
 
 type decryptionCipherCtx struct {
-	cipherCtx
+	*cipherCtx
 }
 
 type CipherCtx interface {
@@ -149,23 +149,23 @@ func GetCipherByNid(nid int) (*Cipher, error) {
 	return GetCipherByName(sn)
 }
 
-func (c Cipher) Nid() int {
+func (c *Cipher) Nid() int {
 	return int(C.EVP_CIPHER_nid_not_a_macro(c.ptr))
 }
 
-func (c Cipher) ShortName() (string, error) {
+func (c *Cipher) ShortName() (string, error) {
 	return Nid2ShortName(c.Nid())
 }
 
-func (c Cipher) BlockSize() int {
+func (c *Cipher) BlockSize() int {
 	return int(C.EVP_CIPHER_block_size_not_a_macro(c.ptr))
 }
 
-func (c Cipher) KeySize() int {
+func (c *Cipher) KeySize() int {
 	return int(C.EVP_CIPHER_key_length_not_a_macro(c.ptr))
 }
 
-func (c Cipher) IVSize() int {
+func (c *Cipher) IVSize() int {
 	return int(C.EVP_CIPHER_iv_length_not_a_macro(c.ptr))
 }
 
@@ -225,7 +225,7 @@ func newEncryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
 	if err != nil {
 		return nil, err
 	}
-	return &encryptionCipherCtx{*ctx}, nil
+	return &encryptionCipherCtx{cipherCtx: ctx}, nil
 }
 
 func newDecryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
@@ -248,7 +248,7 @@ func newDecryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
 	if err != nil {
 		return nil, err
 	}
-	return &decryptionCipherCtx{*ctx}, nil
+	return &decryptionCipherCtx{cipherCtx: ctx}, nil
 }
 
 func NewEncryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
@@ -361,11 +361,11 @@ func (ctx *decryptionCipherCtx) DecryptFinal() ([]byte, error) {
 }
 
 type authEncryptionCipherCtx struct {
-	encryptionCipherCtx
+	*encryptionCipherCtx
 }
 
 type authDecryptionCipherCtx struct {
-	decryptionCipherCtx
+	*decryptionCipherCtx
 }
 
 func getGCMCipher(blocksize int) (*Cipher, error) {
@@ -404,7 +404,7 @@ func NewGCMEncryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
 			return nil, errors.New("failed to apply IV")
 		}
 	}
-	return &authEncryptionCipherCtx{*ctx}, nil
+	return &authEncryptionCipherCtx{encryptionCipherCtx: ctx}, nil
 }
 
 func NewGCMDecryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
@@ -428,7 +428,7 @@ func NewGCMDecryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
 			return nil, errors.New("failed to apply IV")
 		}
 	}
-	return &authDecryptionCipherCtx{*ctx}, nil
+	return &authDecryptionCipherCtx{decryptionCipherCtx: ctx}, nil
 }
 
 func (ctx *authEncryptionCipherCtx) ExtraData(aad []byte) error {
