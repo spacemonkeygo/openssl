@@ -49,22 +49,6 @@ const (
 	GCM_TAG_MAXLEN = 16
 )
 
-type Cipher struct {
-	ptr *C.EVP_CIPHER
-}
-
-type cipherCtx struct {
-	ctx *C.EVP_CIPHER_CTX
-}
-
-type encryptionCipherCtx struct {
-	*cipherCtx
-}
-
-type decryptionCipherCtx struct {
-	*cipherCtx
-}
-
 type CipherCtx interface {
 	Cipher() *Cipher
 	BlockSize() int
@@ -72,54 +56,28 @@ type CipherCtx interface {
 	IVSize() int
 }
 
-type EncryptionCipherCtx interface {
-	CipherCtx
-
-	// pass in plaintext, get back ciphertext. can be called
-	// multiple times as needed
-	EncryptUpdate(input []byte) ([]byte, error)
-
-	// call after all plaintext has been passed in; may return
-	// additional ciphertext if needed to finish off a block
-	// or extra padding information
-	EncryptFinal() ([]byte, error)
+type Cipher struct {
+	ptr *C.EVP_CIPHER
 }
 
-type DecryptionCipherCtx interface {
-	CipherCtx
-
-	// pass in ciphertext, get back plaintext. can be called
-	// multiple times as needed
-	DecryptUpdate(input []byte) ([]byte, error)
-
-	// call after all ciphertext has been passed in; may return
-	// additional plaintext if needed to finish off a block
-	DecryptFinal() ([]byte, error)
+func (c *Cipher) Nid() int {
+	return int(C.EVP_CIPHER_nid_not_a_macro(c.ptr))
 }
 
-type AuthenticatedEncryptionCipherCtx interface {
-	EncryptionCipherCtx
-
-	// data passed in to ExtraData() is part of the final output; it is
-	// not encrypted itself, but is part of the authenticated data. when
-	// decrypting or authenticating, pass back with the decryption
-	// context's ExtraData()
-	ExtraData([]byte) error
-
-	// use after finalizing encryption to get the authenticating tag
-	GetTag() ([]byte, error)
+func (c *Cipher) ShortName() (string, error) {
+	return Nid2ShortName(c.Nid())
 }
 
-type AuthenticatedDecryptionCipherCtx interface {
-	DecryptionCipherCtx
+func (c *Cipher) BlockSize() int {
+	return int(C.EVP_CIPHER_block_size_not_a_macro(c.ptr))
+}
 
-	// pass in any extra data that was added during encryption with the
-	// encryption context's ExtraData()
-	ExtraData([]byte) error
+func (c *Cipher) KeySize() int {
+	return int(C.EVP_CIPHER_key_length_not_a_macro(c.ptr))
+}
 
-	// use before finalizing decryption to tell the library what the
-	// tag is expected to be
-	SetTag([]byte) error
+func (c *Cipher) IVSize() int {
+	return int(C.EVP_CIPHER_iv_length_not_a_macro(c.ptr))
 }
 
 func Nid2ShortName(nid int) (string, error) {
@@ -149,24 +107,8 @@ func GetCipherByNid(nid int) (*Cipher, error) {
 	return GetCipherByName(sn)
 }
 
-func (c *Cipher) Nid() int {
-	return int(C.EVP_CIPHER_nid_not_a_macro(c.ptr))
-}
-
-func (c *Cipher) ShortName() (string, error) {
-	return Nid2ShortName(c.Nid())
-}
-
-func (c *Cipher) BlockSize() int {
-	return int(C.EVP_CIPHER_block_size_not_a_macro(c.ptr))
-}
-
-func (c *Cipher) KeySize() int {
-	return int(C.EVP_CIPHER_key_length_not_a_macro(c.ptr))
-}
-
-func (c *Cipher) IVSize() int {
-	return int(C.EVP_CIPHER_iv_length_not_a_macro(c.ptr))
+type cipherCtx struct {
+	ctx *C.EVP_CIPHER_CTX
 }
 
 func newCipherCtx() (*cipherCtx, error) {
@@ -203,62 +145,6 @@ func (ctx *cipherCtx) applyKeyAndIV(key, iv []byte) error {
 		}
 	}
 	return nil
-}
-
-func newEncryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
-	*encryptionCipherCtx, error) {
-	if c == nil {
-		return nil, errors.New("null cipher not allowed")
-	}
-	ctx, err := newCipherCtx()
-	if err != nil {
-		return nil, err
-	}
-	var eptr *C.ENGINE
-	if e != nil {
-		eptr = e.e
-	}
-	if 1 != C.EVP_EncryptInit_ex(ctx.ctx, c.ptr, eptr, nil, nil) {
-		return nil, errors.New("failed to initialize cipher context")
-	}
-	err = ctx.applyKeyAndIV(key, iv)
-	if err != nil {
-		return nil, err
-	}
-	return &encryptionCipherCtx{cipherCtx: ctx}, nil
-}
-
-func newDecryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
-	*decryptionCipherCtx, error) {
-	if c == nil {
-		return nil, errors.New("null cipher not allowed")
-	}
-	ctx, err := newCipherCtx()
-	if err != nil {
-		return nil, err
-	}
-	var eptr *C.ENGINE
-	if e != nil {
-		eptr = e.e
-	}
-	if 1 != C.EVP_DecryptInit_ex(ctx.ctx, c.ptr, eptr, nil, nil) {
-		return nil, errors.New("failed to initialize cipher context")
-	}
-	err = ctx.applyKeyAndIV(key, iv)
-	if err != nil {
-		return nil, err
-	}
-	return &decryptionCipherCtx{cipherCtx: ctx}, nil
-}
-
-func NewEncryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
-	EncryptionCipherCtx, error) {
-	return newEncryptionCipherCtx(c, e, key, iv)
-}
-
-func NewDecryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
-	DecryptionCipherCtx, error) {
-	return newDecryptionCipherCtx(c, e, key, iv)
 }
 
 func (ctx *cipherCtx) Cipher() *Cipher {
@@ -318,6 +204,95 @@ func (ctx *cipherCtx) getCtrlBytes(code, arg, expectsize int) ([]byte, error) {
 	return returnVal, nil
 }
 
+type EncryptionCipherCtx interface {
+	CipherCtx
+
+	// pass in plaintext, get back ciphertext. can be called
+	// multiple times as needed
+	EncryptUpdate(input []byte) ([]byte, error)
+
+	// call after all plaintext has been passed in; may return
+	// additional ciphertext if needed to finish off a block
+	// or extra padding information
+	EncryptFinal() ([]byte, error)
+}
+
+type DecryptionCipherCtx interface {
+	CipherCtx
+
+	// pass in ciphertext, get back plaintext. can be called
+	// multiple times as needed
+	DecryptUpdate(input []byte) ([]byte, error)
+
+	// call after all ciphertext has been passed in; may return
+	// additional plaintext if needed to finish off a block
+	DecryptFinal() ([]byte, error)
+}
+
+type encryptionCipherCtx struct {
+	*cipherCtx
+}
+
+type decryptionCipherCtx struct {
+	*cipherCtx
+}
+
+func newEncryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
+	*encryptionCipherCtx, error) {
+	if c == nil {
+		return nil, errors.New("null cipher not allowed")
+	}
+	ctx, err := newCipherCtx()
+	if err != nil {
+		return nil, err
+	}
+	var eptr *C.ENGINE
+	if e != nil {
+		eptr = e.e
+	}
+	if 1 != C.EVP_EncryptInit_ex(ctx.ctx, c.ptr, eptr, nil, nil) {
+		return nil, errors.New("failed to initialize cipher context")
+	}
+	err = ctx.applyKeyAndIV(key, iv)
+	if err != nil {
+		return nil, err
+	}
+	return &encryptionCipherCtx{cipherCtx: ctx}, nil
+}
+
+func newDecryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
+	*decryptionCipherCtx, error) {
+	if c == nil {
+		return nil, errors.New("null cipher not allowed")
+	}
+	ctx, err := newCipherCtx()
+	if err != nil {
+		return nil, err
+	}
+	var eptr *C.ENGINE
+	if e != nil {
+		eptr = e.e
+	}
+	if 1 != C.EVP_DecryptInit_ex(ctx.ctx, c.ptr, eptr, nil, nil) {
+		return nil, errors.New("failed to initialize cipher context")
+	}
+	err = ctx.applyKeyAndIV(key, iv)
+	if err != nil {
+		return nil, err
+	}
+	return &decryptionCipherCtx{cipherCtx: ctx}, nil
+}
+
+func NewEncryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
+	EncryptionCipherCtx, error) {
+	return newEncryptionCipherCtx(c, e, key, iv)
+}
+
+func NewDecryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
+	DecryptionCipherCtx, error) {
+	return newDecryptionCipherCtx(c, e, key, iv)
+}
+
 func (ctx *encryptionCipherCtx) EncryptUpdate(input []byte) ([]byte, error) {
 	outbuf := make([]byte, len(input)+ctx.BlockSize())
 	outlen := C.int(len(outbuf))
@@ -358,108 +333,4 @@ func (ctx *decryptionCipherCtx) DecryptFinal() ([]byte, error) {
 		return nil, errors.New("decryption failed")
 	}
 	return outbuf[:outlen], nil
-}
-
-type authEncryptionCipherCtx struct {
-	*encryptionCipherCtx
-}
-
-type authDecryptionCipherCtx struct {
-	*decryptionCipherCtx
-}
-
-func getGCMCipher(blocksize int) (*Cipher, error) {
-	var cipherptr *C.EVP_CIPHER
-	switch blocksize {
-	case 256:
-		cipherptr = C.EVP_aes_256_gcm()
-	case 192:
-		cipherptr = C.EVP_aes_192_gcm()
-	case 128:
-		cipherptr = C.EVP_aes_128_gcm()
-	default:
-		return nil, fmt.Errorf("unknown block size %d", blocksize)
-	}
-	return &Cipher{ptr: cipherptr}, nil
-}
-
-func NewGCMEncryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
-	AuthenticatedEncryptionCipherCtx, error) {
-	cipher, err := getGCMCipher(blocksize)
-	if err != nil {
-		return nil, err
-	}
-	ctx, err := newEncryptionCipherCtx(cipher, e, key, nil)
-	if err != nil {
-		return nil, err
-	}
-	if iv != nil {
-		err := ctx.setCtrl(C.EVP_CTRL_GCM_SET_IVLEN, len(iv))
-		if err != nil {
-			return nil, fmt.Errorf("could not set IV len to %d: %s",
-				len(iv), err)
-		}
-		if 1 != C.EVP_EncryptInit_ex(ctx.ctx, nil, nil, nil,
-			(*C.uchar)(&iv[0])) {
-			return nil, errors.New("failed to apply IV")
-		}
-	}
-	return &authEncryptionCipherCtx{encryptionCipherCtx: ctx}, nil
-}
-
-func NewGCMDecryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
-	AuthenticatedDecryptionCipherCtx, error) {
-	cipher, err := getGCMCipher(blocksize)
-	if err != nil {
-		return nil, err
-	}
-	ctx, err := newDecryptionCipherCtx(cipher, e, key, nil)
-	if err != nil {
-		return nil, err
-	}
-	if iv != nil {
-		err := ctx.setCtrl(C.EVP_CTRL_GCM_SET_IVLEN, len(iv))
-		if err != nil {
-			return nil, fmt.Errorf("could not set IV len to %d: %s",
-				len(iv), err)
-		}
-		if 1 != C.EVP_DecryptInit_ex(ctx.ctx, nil, nil, nil,
-			(*C.uchar)(&iv[0])) {
-			return nil, errors.New("failed to apply IV")
-		}
-	}
-	return &authDecryptionCipherCtx{decryptionCipherCtx: ctx}, nil
-}
-
-func (ctx *authEncryptionCipherCtx) ExtraData(aad []byte) error {
-	if aad == nil {
-		return nil
-	}
-	var outlen C.int
-	if 1 != C.EVP_EncryptUpdate(ctx.ctx, nil, &outlen, (*C.uchar)(&aad[0]),
-		C.int(len(aad))) {
-		return errors.New("failed to add additional authenticated data")
-	}
-	return nil
-}
-
-func (ctx *authDecryptionCipherCtx) ExtraData(aad []byte) error {
-	if aad == nil {
-		return nil
-	}
-	var outlen C.int
-	if 1 != C.EVP_DecryptUpdate(ctx.ctx, nil, &outlen, (*C.uchar)(&aad[0]),
-		C.int(len(aad))) {
-		return errors.New("failed to add additional authenticated data")
-	}
-	return nil
-}
-
-func (ctx *authEncryptionCipherCtx) GetTag() ([]byte, error) {
-	return ctx.getCtrlBytes(C.EVP_CTRL_GCM_GET_TAG, GCM_TAG_MAXLEN,
-		GCM_TAG_MAXLEN)
-}
-
-func (ctx *authDecryptionCipherCtx) SetTag(tag []byte) error {
-	return ctx.setCtrlBytes(C.EVP_CTRL_GCM_SET_TAG, len(tag), tag)
 }
