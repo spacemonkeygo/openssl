@@ -50,7 +50,8 @@ func Listen(network, laddr string, ctx *Ctx) (net.Listener, error) {
 type DialFlags int
 
 const (
-	InsecureSkipHostVerification DialFlags = 0x01
+	InsecureSkipHostVerification DialFlags = 1 << iota
+	DisableSNI
 )
 
 // Dial will connect to network/address and then wrap the corresponding
@@ -64,6 +65,10 @@ const (
 // This library is not nice enough to use the system certificate store by
 // default for you yet.
 func Dial(network, addr string, ctx *Ctx, flags DialFlags) (*Conn, error) {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
 	if ctx == nil {
 		var err error
 		ctx, err = NewCtx()
@@ -81,17 +86,19 @@ func Dial(network, addr string, ctx *Ctx, flags DialFlags) (*Conn, error) {
 		c.Close()
 		return nil, err
 	}
+	if flags&DisableSNI == 0 {
+		err = conn.SetTlsExtHostName(host)
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
+	}
 	err = conn.Handshake()
 	if err != nil {
 		c.Close()
 		return nil, err
 	}
 	if flags&InsecureSkipHostVerification == 0 {
-		host, _, err := net.SplitHostPort(addr)
-		if err != nil {
-			conn.Close()
-			return nil, err
-		}
 		err = conn.VerifyHostname(host)
 		if err != nil {
 			conn.Close()

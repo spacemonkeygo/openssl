@@ -99,6 +99,8 @@ func newConn(conn net.Conn, ctx *Ctx) (*Conn, error) {
 // connection, you are responsible for verifying the peer's hostname.
 // Otherwise, you are vulnerable to MITM attacks.
 //
+// Client also does not set up SNI for you like Dial does.
+//
 // Client connections probably won't work for you unless you set a verify
 // location or add some certs to the certificate store of the client context
 // you're using. This library is not nice enough to use the system certificate
