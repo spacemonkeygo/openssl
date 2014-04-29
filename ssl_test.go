@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"code.spacemonkey.com/go/openssl/utils"
+	"github.com/SpaceMonkeyGo/openssl/utils"
 )
 
 var (

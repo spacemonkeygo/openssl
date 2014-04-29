@@ -3,49 +3,54 @@
 
 package openssl
 
-//#include <openssl/crypto.h>
-//#include <openssl/ssl.h>
-//#include <openssl/err.h>
-//#include <openssl/conf.h>
-//
-//static long SSL_CTX_set_options_not_a_macro(SSL_CTX* ctx, long options) {
-//   return SSL_CTX_set_options(ctx, options);
-//}
-//
-//static long SSL_CTX_set_mode_not_a_macro(SSL_CTX* ctx, long modes) {
-//   return SSL_CTX_set_mode(ctx, modes);
-//}
-//
-//static long SSL_CTX_set_session_cache_mode_not_a_macro(SSL_CTX* ctx, long modes) {
-//   return SSL_CTX_set_session_cache_mode(ctx, modes);
-//}
-//
-//static int CRYPTO_add_not_a_macro(int *pointer,int amount,int type) {
-//   return CRYPTO_add(pointer, amount, type);
-//}
-//
-//#ifndef SSL_MODE_RELEASE_BUFFERS
-//#define SSL_MODE_RELEASE_BUFFERS 0
-//#endif
-//#ifndef SSL_OP_NO_COMPRESSION
-//#define SSL_OP_NO_COMPRESSION 0
-//#endif
-//static const SSL_METHOD *OUR_TLSv1_1_method() {
-//#ifdef TLS1_1_VERSION
-//    return TLSv1_1_method();
-//#else
-//    return NULL;
-//#endif
-//}
-//static const SSL_METHOD *OUR_TLSv1_2_method() {
-//#ifdef TLS1_2_VERSION
-//    return TLSv1_2_method();
-//#else
-//    return NULL;
-//#endif
-//}
-//
-//extern int verify_cb(int ok, X509_STORE_CTX* store);
+/*
+#include <openssl/crypto.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/conf.h>
+
+static long SSL_CTX_set_options_not_a_macro(SSL_CTX* ctx, long options) {
+   return SSL_CTX_set_options(ctx, options);
+}
+
+static long SSL_CTX_set_mode_not_a_macro(SSL_CTX* ctx, long modes) {
+   return SSL_CTX_set_mode(ctx, modes);
+}
+
+static long SSL_CTX_set_session_cache_mode_not_a_macro(SSL_CTX* ctx, long modes) {
+   return SSL_CTX_set_session_cache_mode(ctx, modes);
+}
+
+static int CRYPTO_add_not_a_macro(int *pointer,int amount,int type) {
+   return CRYPTO_add(pointer, amount, type);
+}
+
+#ifndef SSL_MODE_RELEASE_BUFFERS
+#define SSL_MODE_RELEASE_BUFFERS 0
+#endif
+
+#ifndef SSL_OP_NO_COMPRESSION
+#define SSL_OP_NO_COMPRESSION 0
+#endif
+
+static const SSL_METHOD *OUR_TLSv1_1_method() {
+#ifdef TLS1_1_VERSION
+    return TLSv1_1_method();
+#else
+    return NULL;
+#endif
+}
+
+static const SSL_METHOD *OUR_TLSv1_2_method() {
+#ifdef TLS1_2_VERSION
+    return TLSv1_2_method();
+#else
+    return NULL;
+#endif
+}
+
+extern int verify_cb(int ok, X509_STORE_CTX* store);
+*/
 import "C"
 
 import (
@@ -56,13 +61,13 @@ import (
 	"runtime"
 	"unsafe"
 
-	space_log "code.spacemonkey.com/go/space/log"
+	"github.com/SpaceMonkeyGo/spacelog"
 )
 
 var (
 	ssl_ctx_idx = C.SSL_CTX_get_ex_new_index(0, nil, nil, nil, nil)
 
-	logger = space_log.GetLogger()
+	logger = spacelog.GetLogger()
 )
 
 type Ctx struct {
