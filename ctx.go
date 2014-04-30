@@ -17,6 +17,10 @@ static long SSL_CTX_set_mode_not_a_macro(SSL_CTX* ctx, long modes) {
    return SSL_CTX_set_mode(ctx, modes);
 }
 
+static long SSL_CTX_get_mode_not_a_macro(SSL_CTX* ctx) {
+   return SSL_CTX_get_mode(ctx);
+}
+
 static long SSL_CTX_set_session_cache_mode_not_a_macro(SSL_CTX* ctx, long modes) {
    return SSL_CTX_set_session_cache_mode(ctx, modes);
 }
@@ -314,6 +318,12 @@ const (
 // http://www.openssl.org/docs/ssl/SSL_CTX_set_mode.html
 func (c *Ctx) SetMode(modes Modes) Modes {
 	return Modes(C.SSL_CTX_set_mode_not_a_macro(c.ctx, C.long(modes)))
+}
+
+// GetMode returns context modes. See
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_mode.html
+func (c *Ctx) GetMode() Modes {
+	return Modes(C.SSL_CTX_get_mode_not_a_macro(c.ctx))
 }
 
 type VerifyOptions int

@@ -90,9 +90,10 @@ func cbioFree(b *C.BIO) C.int {
 }
 
 type writeBio struct {
-	data_mtx sync.Mutex
-	op_mtx   sync.Mutex
-	buf      []byte
+	data_mtx        sync.Mutex
+	op_mtx          sync.Mutex
+	buf             []byte
+	release_buffers bool
 }
 
 func loadWritePtr(b *C.BIO) *writeBio {
@@ -174,6 +175,9 @@ func (b *writeBio) WriteTo(w io.Writer) (rv int64, err error) {
 	// subtract however much data we wrote from the buffer
 	b.data_mtx.Lock()
 	b.buf = b.buf[:copy(b.buf, b.buf[n:])]
+	if b.release_buffers && len(b.buf) == 0 {
+		b.buf = nil
+	}
 	b.data_mtx.Unlock()
 
 	return int64(n), err
@@ -192,10 +196,11 @@ func (b *writeBio) MakeCBIO() *C.BIO {
 }
 
 type readBio struct {
-	data_mtx sync.Mutex
-	op_mtx   sync.Mutex
-	buf      []byte
-	eof      bool
+	data_mtx        sync.Mutex
+	op_mtx          sync.Mutex
+	buf             []byte
+	eof             bool
+	release_buffers bool
 }
 
 func loadReadPtr(b *C.BIO) *readBio {
@@ -229,6 +234,9 @@ func readBioRead(b *C.BIO, data *C.char, size C.int) (rc C.int) {
 	}
 	n := copy(nonCopyCString(data, size), ptr.buf)
 	ptr.buf = ptr.buf[:copy(ptr.buf, ptr.buf[n:])]
+	if ptr.release_buffers && len(ptr.buf) == 0 {
+		ptr.buf = nil
+	}
 	return C.int(n)
 }
 
