@@ -2,7 +2,7 @@
 
 Please see http://godoc.org/github.com/SpaceMonkeyGo/openssl for more info
 
-# License
+### License
 
 Copyright (C) 2014 Space Monkey, Inc.
 
