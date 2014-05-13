@@ -78,7 +78,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/SpaceMonkeyGo/spacelog"
+	"github.com/spacemonkeygo/spacelog"
 )
 
 var (

@@ -38,7 +38,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/SpaceMonkeyGo/openssl/utils"
+	"github.com/spacemonkeygo/openssl/utils"
 )
 
 var (

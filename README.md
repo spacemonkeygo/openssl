@@ -1,6 +1,6 @@
 # OpenSSL bindings for Go
 
-Please see http://godoc.org/github.com/SpaceMonkeyGo/openssl for more info
+Please see http://godoc.org/github.com/spacemonkeygo/openssl for more info
 
 ### License
 
