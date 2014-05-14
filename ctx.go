@@ -42,6 +42,10 @@ static int CRYPTO_add_not_a_macro(int *pointer,int amount,int type) {
    return CRYPTO_add(pointer, amount, type);
 }
 
+static long SSL_CTX_add_extra_chain_cert_not_a_macro(SSL_CTX* ctx, X509 *cert) {
+    return SSL_CTX_add_extra_chain_cert(ctx, cert);
+}
+
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
 #endif
@@ -200,6 +204,17 @@ func (c *Ctx) UseCertificate(cert *Certificate) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	if int(C.SSL_CTX_use_certificate(c.ctx, cert.x)) != 1 {
+		return errorFromErrorQueue()
+	}
+	return nil
+}
+
+// AddChainCertificate adds a certificate to the chain presented in the
+// handshake.
+func (c *Ctx) AddChainCertificate(cert *Certificate) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	if int(C.SSL_CTX_add_extra_chain_cert_not_a_macro(c.ctx, cert.x)) != 1 {
 		return errorFromErrorQueue()
 	}
 	return nil
