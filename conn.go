@@ -16,6 +16,7 @@
 
 package openssl
 
+// #include <stdlib.h>
 // #include <openssl/ssl.h>
 // #include <openssl/conf.h>
 // #include <openssl/err.h>
@@ -490,8 +491,8 @@ func (c *Conn) UnderlyingConn() net.Conn {
 }
 
 func (c *Conn) SetTlsExtHostName(name string) error {
-	bname := []byte(name)
-	cname := (*C.char)(unsafe.Pointer(&bname[0]))
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	if C.SSL_set_tlsext_host_name_not_a_macro(c.ssl, cname) == 0 {
