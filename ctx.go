@@ -46,6 +46,10 @@ static long SSL_CTX_add_extra_chain_cert_not_a_macro(SSL_CTX* ctx, X509 *cert) {
     return SSL_CTX_add_extra_chain_cert(ctx, cert);
 }
 
+static long SSL_CTX_set_tmp_ecdh_not_a_macro(SSL_CTX* ctx, EC_KEY *key) {
+    return SSL_CTX_set_tmp_ecdh(ctx, key);
+}
+
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
 #endif
@@ -196,6 +200,36 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 	}
 
 	return ctx, nil
+}
+
+// EllipticCurve repesents the ASN.1 OID of an elliptic curve.
+// see https://www.openssl.org/docs/apps/ecparam.html for a list of implemented curves.
+type EllipticCurve int
+
+const (
+	// P-256: X9.62/SECG curve over a 256 bit prime field
+	Prime256v1 EllipticCurve = C.NID_X9_62_prime256v1
+	// P-384: NIST/SECG curve over a 384 bit prime field
+	Secp384r1 EllipticCurve = C.NID_secp384r1
+)
+
+// SetEllipticCurve sets the elliptic curve used by the SSL context to
+// enable an ECDH cipher suite to be selected during the handshake.
+func (c *Ctx) SetEllipticCurve(curve EllipticCurve) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	k := C.EC_KEY_new_by_curve_name(C.int(curve))
+	if k == nil {
+		return errors.New("Unknown curve")
+	}
+	defer C.EC_KEY_free(k)
+
+	if int(C.SSL_CTX_set_tmp_ecdh_not_a_macro(c.ctx, k)) != 1 {
+		return errorFromErrorQueue()
+	}
+
+	return nil
 }
 
 // UseCertificate configures the context to present the given certificate to
