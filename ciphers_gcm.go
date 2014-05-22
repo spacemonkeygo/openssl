@@ -82,7 +82,7 @@ func NewGCMEncryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
 	if err != nil {
 		return nil, err
 	}
-	if iv != nil {
+	if len(iv) > 0 {
 		err := ctx.setCtrl(C.EVP_CTRL_GCM_SET_IVLEN, len(iv))
 		if err != nil {
 			return nil, fmt.Errorf("could not set IV len to %d: %s",
@@ -106,7 +106,7 @@ func NewGCMDecryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
 	if err != nil {
 		return nil, err
 	}
-	if iv != nil {
+	if len(iv) > 0 {
 		err := ctx.setCtrl(C.EVP_CTRL_GCM_SET_IVLEN, len(iv))
 		if err != nil {
 			return nil, fmt.Errorf("could not set IV len to %d: %s",
