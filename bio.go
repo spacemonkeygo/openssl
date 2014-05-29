@@ -21,7 +21,9 @@ package openssl
 #include <openssl/bio.h>
 
 extern int cbioNew(BIO *b);
-extern int cbioFree(BIO *b);
+static int cbioFree(BIO *b) {
+	return 1;
+}
 
 extern int writeBioWrite(BIO *b, char *buf, int size);
 extern long writeBioCtrl(BIO *b, int cmd, long arg1, void *arg2);
@@ -94,11 +96,6 @@ func cbioNew(b *C.BIO) C.int {
 	b.num = -1
 	b.ptr = nil
 	b.flags = 0
-	return 1
-}
-
-//export cbioFree
-func cbioFree(b *C.BIO) C.int {
 	return 1
 }
 
