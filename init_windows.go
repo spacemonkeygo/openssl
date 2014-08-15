@@ -18,7 +18,7 @@ package openssl
 
 /*
 
-#cgo windows LDFLAGS: -lssl -lcrypto -lws2_32 -lcrypt32 -lgdi32
+#cgo pkg-config: libssl
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
