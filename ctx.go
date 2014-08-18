@@ -98,6 +98,7 @@ var (
 type Ctx struct {
 	ctx       *C.SSL_CTX
 	verify_cb VerifyCallback
+	sni_cb TLSExtServernameCallback
 }
 
 //export get_ssl_ctx_idx
