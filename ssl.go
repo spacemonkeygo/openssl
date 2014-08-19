@@ -22,10 +22,6 @@ package openssl
 #include <openssl/err.h>
 #include <openssl/conf.h>
 
-static long SSL_CTX_set_tlsext_servername_callback_not_a_macro(SSL_CTX* ctx,  int (*cb)(SSL *con, int *ad, void *args)) {
-	return SSL_CTX_set_tlsext_servername_callback(ctx, cb);
-}
-
 static long SSL_set_options_not_a_macro(SSL* ssl, long options) {
    return SSL_set_options(ssl, options);
 }
@@ -37,10 +33,6 @@ static long SSL_get_options_not_a_macro(SSL* ssl) {
 static long SSL_clear_options_not_a_macro(SSL* ssl, long options) {
    return SSL_clear_options(ssl, options);
 }
-
-#if defined SSL_CTRL_SET_TLSEXT_HOSTNAME
-	extern int sni_cb(SSL *ssl_conn, int *ad, void *arg);
-#endif
 
 extern int verify_ssl_cb(int ok, X509_STORE_CTX* store);
 */
@@ -96,7 +88,7 @@ func verify_ssl_cb_thunk(p unsafe.Pointer, ok C.int, ctx *C.X509_STORE_CTX) C.in
 }
 
 // Wrapper around SSL_get_servername. Returns server name according to rfc6066 
-// Extension Definitions.
+// (http://tools.ietf.org/html/rfc6066) Extension Definitions.
 func (s *SSL) GetServername() string {
 	return C.GoString(C.SSL_get_servername(s.ssl, C.TLSEXT_NAMETYPE_host_name))
 }
@@ -169,7 +161,7 @@ func (s *SSL) GetVerifyDepth() int {
 }
 
 // SetSSLCtx change context to new one. Useful for Server Name Indication (SNI) 
-// rfc6066. See
+// rfc6066 (http://tools.ietf.org/html/rfc6066). See
 // http://stackoverflow.com/questions/22373332/serving-multiple-domains-in-one-box-with-sni
 func (s *SSL) SetSSLCtx(ctx *Ctx) {
 	/*
@@ -177,16 +169,6 @@ func (s *SSL) SetSSLCtx(ctx *Ctx) {
 	 * adjust other things we care about
 	 */
 	C.SSL_set_SSL_CTX(s.ssl, ctx.ctx)
-}
-
-type TLSExtServernameCallback func(ssl *SSL) SSLTLSExtErr
-
-// SetTLSExtServernameCallback sets callback function for Server Name Indication 
-// (SNI) rfc6066. See
-// http://stackoverflow.com/questions/22373332/serving-multiple-domains-in-one-box-with-sni
-func (c *Ctx) SetTLSExtServernameCallback(sni_cb TLSExtServernameCallback) {
-	c.sni_cb = sni_cb
-	C.SSL_CTX_set_tlsext_servername_callback_not_a_macro(c.ctx, (*[0]byte)(C.sni_cb))
 }
 
 //export sni_cb_thunk
