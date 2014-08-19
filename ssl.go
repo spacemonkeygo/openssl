@@ -88,7 +88,7 @@ func verify_ssl_cb_thunk(p unsafe.Pointer, ok C.int, ctx *C.X509_STORE_CTX) C.in
 }
 
 // Wrapper around SSL_get_servername. Returns server name according to rfc6066 
-// (http://tools.ietf.org/html/rfc6066) Extension Definitions.
+// http://tools.ietf.org/html/rfc6066.
 func (s *SSL) GetServername() string {
 	return C.GoString(C.SSL_get_servername(s.ssl, C.TLSEXT_NAMETYPE_host_name))
 }
@@ -161,7 +161,7 @@ func (s *SSL) GetVerifyDepth() int {
 }
 
 // SetSSLCtx change context to new one. Useful for Server Name Indication (SNI) 
-// rfc6066 (http://tools.ietf.org/html/rfc6066). See
+// rfc6066 http://tools.ietf.org/html/rfc6066. See
 // http://stackoverflow.com/questions/22373332/serving-multiple-domains-in-one-box-with-sni
 func (s *SSL) SetSSLCtx(ctx *Ctx) {
 	/*
