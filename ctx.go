@@ -233,7 +233,7 @@ func NewCtxFromFilesTickets(cert_file, key_file string, ticket_files []string) (
 	}
 
 	if len(ticket_files) < 1 {
-		return nil, errors.New("There is no TLS tickets")
+		return nil, errors.New("There are no TLS tickets")
 	}
 
 	tickets := make([]*TLSTicket, len(ticket_files))
