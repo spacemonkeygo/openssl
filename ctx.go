@@ -26,6 +26,10 @@ static long SSL_CTX_set_options_not_a_macro(SSL_CTX* ctx, long options) {
    return SSL_CTX_set_options(ctx, options);
 }
 
+static long SSL_CTX_get_options_not_a_macro(SSL_CTX* ctx) {
+   return SSL_CTX_get_options(ctx);
+}
+
 static long SSL_CTX_set_mode_not_a_macro(SSL_CTX* ctx, long modes) {
    return SSL_CTX_set_mode(ctx, modes);
 }
@@ -370,6 +374,12 @@ func (c *Ctx) SetOptions(options Options) Options {
 		c.ctx, C.long(options)))
 }
 
+// GetOptions returns context options. See
+// https://www.openssl.org/docs/ssl/SSL_CTX_set_options.html
+func (c *Ctx) GetOptions() Options {
+	return Options(C.SSL_CTX_get_options_not_a_macro(c.ctx))
+}
+
 type Modes int
 
 const (
@@ -440,6 +450,10 @@ func (c *Ctx) SetVerifyCallback(verify_cb VerifyCallback) {
 	c.SetVerify(c.VerifyMode(), verify_cb)
 }
 
+func (c *Ctx) GetVerifyCallback() VerifyCallback {
+	return c.verify_cb
+}
+
 func (c *Ctx) VerifyMode() VerifyOptions {
 	return VerifyOptions(C.SSL_CTX_get_verify_mode(c.ctx))
 }
@@ -449,6 +463,13 @@ func (c *Ctx) VerifyMode() VerifyOptions {
 // https://www.openssl.org/docs/ssl/SSL_CTX_set_verify.html
 func (c *Ctx) SetVerifyDepth(depth int) {
 	C.SSL_CTX_set_verify_depth(c.ctx, C.int(depth))
+}
+
+// GetVerifyDepth controls how many certificates deep the certificate
+// verification logic is willing to follow a certificate chain. See
+// https://www.openssl.org/docs/ssl/SSL_CTX_set_verify.html
+func (c *Ctx) GetVerifyDepth() int {
+	return int(C.SSL_CTX_get_verify_depth(c.ctx))
 }
 
 func (c *Ctx) SetSessionId(session_id []byte) error {
