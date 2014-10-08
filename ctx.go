@@ -26,6 +26,10 @@ static long SSL_CTX_set_options_not_a_macro(SSL_CTX* ctx, long options) {
    return SSL_CTX_set_options(ctx, options);
 }
 
+static long SSL_CTX_clear_options_not_a_macro(SSL_CTX* ctx, long options) {
+   return SSL_CTX_clear_options(ctx, options);
+}
+
 static long SSL_CTX_set_mode_not_a_macro(SSL_CTX* ctx, long modes) {
    return SSL_CTX_set_mode(ctx, modes);
 }
@@ -357,6 +361,8 @@ const (
 	NoSSLv2                            Options = C.SSL_OP_NO_SSLv2
 	NoSSLv3                            Options = C.SSL_OP_NO_SSLv3
 	NoTLSv1                            Options = C.SSL_OP_NO_TLSv1
+	NoTLSv1_1                          Options = C.SSL_OP_NO_TLSv1_1
+	NoTLSv1_2                          Options = C.SSL_OP_NO_TLSv1_2
 	CipherServerPreference             Options = C.SSL_OP_CIPHER_SERVER_PREFERENCE
 	NoSessionResumptionOrRenegotiation Options = C.SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
 	NoTicket                           Options = C.SSL_OP_NO_TICKET
@@ -366,6 +372,11 @@ const (
 // http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html
 func (c *Ctx) SetOptions(options Options) Options {
 	return Options(C.SSL_CTX_set_options_not_a_macro(
+		c.ctx, C.long(options)))
+}
+
+func (c *Ctx) ClearOptions(options Options) Options {
+	return Options(C.SSL_CTX_clear_options_not_a_macro(
 		c.ctx, C.long(options)))
 }
 
