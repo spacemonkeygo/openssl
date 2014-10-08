@@ -28,6 +28,9 @@ package openssl
 // long SSL_set_tlsext_host_name_not_a_macro(SSL *ssl, const char *name) {
 //    return SSL_set_tlsext_host_name(ssl, name);
 // }
+// const char * SSL_get_cipher_name_not_a_macro(const SSL *ssl) {
+//    return SSL_get_cipher_name(ssl);
+// }
 import "C"
 
 import (
@@ -142,6 +145,15 @@ func Server(conn net.Conn, ctx *Ctx) (*Conn, error) {
 	}
 	C.SSL_set_accept_state(c.ssl)
 	return c, nil
+}
+
+func (c *Conn) CurrentCipher() (string, error) {
+	p := C.SSL_get_cipher_name_not_a_macro(c.ssl)
+	if p == nil {
+		return "", errors.New("Session not established")
+	}
+
+	return C.GoString(p), nil
 }
 
 func (c *Conn) fillInputBuffer() error {
