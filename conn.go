@@ -109,16 +109,7 @@ const (
 	InvalidExtension              VerifyResult = C.X509_V_ERR_INVALID_EXTENSION
 	InvalidPolicyExtension        VerifyResult = C.X509_V_ERR_INVALID_POLICY_EXTENSION
 	NoExplicitPolicy              VerifyResult = C.X509_V_ERR_NO_EXPLICIT_POLICY
-	DifferentCrlScope             VerifyResult = C.X509_V_ERR_DIFFERENT_CRL_SCOPE
-	UnsupportedExtensionFeature   VerifyResult = C.X509_V_ERR_UNSUPPORTED_EXTENSION_FEATURE
 	UnnestedResource              VerifyResult = C.X509_V_ERR_UNNESTED_RESOURCE
-	PermittedViolation            VerifyResult = C.X509_V_ERR_PERMITTED_VIOLATION
-	ExcludedViolation             VerifyResult = C.X509_V_ERR_EXCLUDED_VIOLATION
-	SubtreeMinmax                 VerifyResult = C.X509_V_ERR_SUBTREE_MINMAX
-	UnsupportedConstraintType     VerifyResult = C.X509_V_ERR_UNSUPPORTED_CONSTRAINT_TYPE
-	UnsupportedConstraintSyntax   VerifyResult = C.X509_V_ERR_UNSUPPORTED_CONSTRAINT_SYNTAX
-	UnsupportedNameSyntax         VerifyResult = C.X509_V_ERR_UNSUPPORTED_NAME_SYNTAX
-	CrlPathValidationError        VerifyResult = C.X509_V_ERR_CRL_PATH_VALIDATION_ERROR
 	ApplicationVerification       VerifyResult = C.X509_V_ERR_APPLICATION_VERIFICATION
 )
 
