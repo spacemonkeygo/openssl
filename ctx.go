@@ -127,10 +127,13 @@ func newCtx(method *C.SSL_METHOD) (*Ctx, error) {
 type SSLVersion int
 
 const (
-	SSLv3      SSLVersion = 0x02
-	TLSv1      SSLVersion = 0x03
-	TLSv1_1    SSLVersion = 0x04
-	TLSv1_2    SSLVersion = 0x05
+	SSLv3   SSLVersion = 0x02 // Vulnerable to "POODLE" attack.
+	TLSv1   SSLVersion = 0x03
+	TLSv1_1 SSLVersion = 0x04
+	TLSv1_2 SSLVersion = 0x05
+
+	// Make sure to disable SSLv2 and SSLv3 if you use this. SSLv3 is vulnerable
+	// to the "POODLE" attack, and SSLv2 is what, just don't even.
 	AnyVersion SSLVersion = 0x06
 )
 
