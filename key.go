@@ -20,8 +20,6 @@ package openssl
 // #include <openssl/ssl.h>
 // #include <openssl/conf.h>
 //
-// void OPENSSL_free_not_a_macro(void *ref) { OPENSSL_free(ref); }
-//
 // int EVP_SignInit_not_a_macro(EVP_MD_CTX *ctx, const EVP_MD *type) {
 //     return EVP_SignInit(ctx, type);
 // }
@@ -312,65 +310,24 @@ func LoadPublicKeyFromDER(der_block []byte) (PublicKey, error) {
 	return p, nil
 }
 
-type Certificate struct {
-	x   *C.X509
-	ref interface{}
-}
-
-// LoadCertificateFromPEM loads an X509 certificate from a PEM-encoded block.
-func LoadCertificateFromPEM(pem_block []byte) (*Certificate, error) {
-	if len(pem_block) == 0 {
-		return nil, errors.New("empty pem block")
+// GenerateRSAKey generates a new RSA private key with an exponent of 3.
+func GenerateRSAKey(bits int) (PrivateKey, error) {
+	exponent := 3
+	rsa := C.RSA_generate_key(C.int(bits), C.ulong(exponent), nil, nil)
+	if rsa == nil {
+		return nil, errors.New("failed to generate RSA key")
 	}
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-	bio := C.BIO_new_mem_buf(unsafe.Pointer(&pem_block[0]),
-		C.int(len(pem_block)))
-	cert := C.PEM_read_bio_X509(bio, nil, nil, nil)
-	C.BIO_free(bio)
-	if cert == nil {
-		return nil, errorFromErrorQueue()
+	key := C.EVP_PKEY_new()
+	if key == nil {
+		return nil, errors.New("failed to allocate EVP_PKEY")
 	}
-	x := &Certificate{x: cert}
-	runtime.SetFinalizer(x, func(x *Certificate) {
-		C.X509_free(x.x)
+	if C.EVP_PKEY_assign(key, C.EVP_PKEY_RSA, unsafe.Pointer(rsa)) != 1 {
+		C.EVP_PKEY_free(key)
+		return nil, errors.New("failed to assign RSA key")
+	}
+	p := &pKey{key: key}
+	runtime.SetFinalizer(p, func(p *pKey) {
+		C.EVP_PKEY_free(p.key)
 	})
-	return x, nil
-}
-
-// MarshalPEM converts the X509 certificate to PEM-encoded format
-func (c *Certificate) MarshalPEM() (pem_block []byte, err error) {
-	bio := C.BIO_new(C.BIO_s_mem())
-	if bio == nil {
-		return nil, errors.New("failed to allocate memory BIO")
-	}
-	defer C.BIO_free(bio)
-	if int(C.PEM_write_bio_X509(bio, c.x)) != 1 {
-		return nil, errors.New("failed dumping certificate")
-	}
-	return ioutil.ReadAll(asAnyBio(bio))
-}
-
-// PublicKey returns the public key embedded in the X509 certificate.
-func (c *Certificate) PublicKey() (PublicKey, error) {
-	pkey := C.X509_get_pubkey(c.x)
-	if pkey == nil {
-		return nil, errors.New("no public key found")
-	}
-	key := &pKey{key: pkey}
-	runtime.SetFinalizer(key, func(key *pKey) {
-		C.EVP_PKEY_free(key.key)
-	})
-	return key, nil
-}
-
-// GetSerialNumberHex returns the certificate's serial number in hex format
-func (c *Certificate) GetSerialNumberHex() (serial string) {
-	asn1_i := C.X509_get_serialNumber(c.x)
-	bignum := C.ASN1_INTEGER_to_BN(asn1_i, nil)
-	hex := C.BN_bn2hex(bignum)
-	serial = C.GoString(hex)
-	C.BN_free(bignum)
-	C.OPENSSL_free_not_a_macro(unsafe.Pointer(hex))
-	return
+	return p, nil
 }

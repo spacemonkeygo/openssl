@@ -73,8 +73,8 @@ type Cipher struct {
 	ptr *C.EVP_CIPHER
 }
 
-func (c *Cipher) Nid() int {
-	return int(C.EVP_CIPHER_nid_not_a_macro(c.ptr))
+func (c *Cipher) Nid() NID {
+	return NID(C.EVP_CIPHER_nid_not_a_macro(c.ptr))
 }
 
 func (c *Cipher) ShortName() (string, error) {
@@ -93,7 +93,7 @@ func (c *Cipher) IVSize() int {
 	return int(C.EVP_CIPHER_iv_length_not_a_macro(c.ptr))
 }
 
-func Nid2ShortName(nid int) (string, error) {
+func Nid2ShortName(nid NID) (string, error) {
 	sn := C.OBJ_nid2sn(C.int(nid))
 	if sn == nil {
 		return "", fmt.Errorf("NID %d not found", nid)
@@ -112,7 +112,7 @@ func GetCipherByName(name string) (*Cipher, error) {
 	return &Cipher{ptr: p}, nil
 }
 
-func GetCipherByNid(nid int) (*Cipher, error) {
+func GetCipherByNid(nid NID) (*Cipher, error) {
 	sn, err := Nid2ShortName(nid)
 	if err != nil {
 		return nil, err
