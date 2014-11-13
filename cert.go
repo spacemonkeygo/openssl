@@ -53,6 +53,7 @@ type Certificate struct {
 	x      *C.X509
 	Issuer *Certificate
 	ref    interface{}
+	pubKey PublicKey
 }
 
 type CertificateInfo struct {
@@ -221,6 +222,7 @@ func (c *Certificate) SetExpireDate(when time.Duration) error {
 
 // SetPubKey assigns a new public key to a certificate.
 func (c *Certificate) SetPubKey(pubKey PublicKey) error {
+	c.pubKey = pubKey
 	if C.X509_set_pubkey(c.x, pubKey.evpPKey()) != 1 {
 		return errors.New("failed to set public key")
 	}

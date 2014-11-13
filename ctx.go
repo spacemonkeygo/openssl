@@ -101,6 +101,9 @@ var (
 
 type Ctx struct {
 	ctx       *C.SSL_CTX
+	cert      *Certificate
+	chain     []*Certificate
+	key       PrivateKey
 	verify_cb VerifyCallback
 }
 
@@ -244,6 +247,7 @@ func (c *Ctx) SetEllipticCurve(curve EllipticCurve) error {
 func (c *Ctx) UseCertificate(cert *Certificate) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	c.cert = cert
 	if int(C.SSL_CTX_use_certificate(c.ctx, cert.x)) != 1 {
 		return errorFromErrorQueue()
 	}
@@ -255,6 +259,7 @@ func (c *Ctx) UseCertificate(cert *Certificate) error {
 func (c *Ctx) AddChainCertificate(cert *Certificate) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	c.chain = append(c.chain, cert)
 	if int(C.SSL_CTX_add_extra_chain_cert_not_a_macro(c.ctx, cert.x)) != 1 {
 		return errorFromErrorQueue()
 	}
@@ -266,6 +271,7 @@ func (c *Ctx) AddChainCertificate(cert *Certificate) error {
 func (c *Ctx) UsePrivateKey(key PrivateKey) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	c.key = key
 	if int(C.SSL_CTX_use_PrivateKey(c.ctx, key.evpPKey())) != 1 {
 		return errorFromErrorQueue()
 	}
@@ -274,7 +280,9 @@ func (c *Ctx) UsePrivateKey(key PrivateKey) error {
 
 type CertificateStore struct {
 	store *C.X509_STORE
-	ctx   *Ctx // for gc
+	// for GC
+	ctx   *Ctx
+	certs []*Certificate
 }
 
 // GetCertificateStore returns the context's certificate store that will be
@@ -292,6 +300,7 @@ func (c *Ctx) GetCertificateStore() *CertificateStore {
 func (s *CertificateStore) AddCertificate(cert *Certificate) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	s.certs = append(s.certs, cert)
 	if int(C.X509_STORE_add_cert(s.store, cert.x)) != 1 {
 		return errorFromErrorQueue()
 	}
