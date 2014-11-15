@@ -184,7 +184,12 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 		return nil, err
 	}
 
-	cert, err := LoadCertificateFromPEM(cert_bytes)
+	certs := SplitPEM(cert_bytes)
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("No PEM certificate found in '%s'", cert_file)
+	}
+	first, certs := certs[0], certs[1:]
+	cert, err := LoadCertificateFromPEM(first)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +197,17 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 	err = ctx.UseCertificate(cert)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, pem := range certs {
+		cert, err := LoadCertificateFromPEM(pem)
+		if err != nil {
+			return nil, err
+		}
+		err = ctx.AddChainCertificate(cert)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	key_bytes, err := ioutil.ReadFile(key_file)
