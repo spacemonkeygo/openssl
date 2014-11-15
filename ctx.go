@@ -301,6 +301,35 @@ type CertificateStore struct {
 	certs []*Certificate
 }
 
+// Allocate a new, empty CertificateStore
+func NewCertificateStore() (*CertificateStore, error) {
+	s := C.X509_STORE_new()
+	if s == nil {
+		return nil, errors.New("failed to allocate X509_STORE")
+	}
+	store := &CertificateStore{store: s}
+	runtime.SetFinalizer(store, func(s *CertificateStore) {
+		C.X509_STORE_free(s.store)
+	})
+	return store, nil
+}
+
+// Parse a chained PEM file, loading all certificates into the Store.
+func (s *CertificateStore) LoadCertificatesFromPEM(data []byte) error {
+	pems := SplitPEM(data)
+	for _, pem := range pems {
+		cert, err := LoadCertificateFromPEM(pem)
+		if err != nil {
+			return err
+		}
+		err = s.AddCertificate(cert)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetCertificateStore returns the context's certificate store that will be
 // used for peer validation.
 func (c *Ctx) GetCertificateStore() *CertificateStore {
