@@ -184,7 +184,12 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 		return nil, err
 	}
 
-	cert, err := LoadCertificateFromPEM(cert_bytes)
+	certs := SplitPEM(cert_bytes)
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("No PEM certificate found in '%s'", cert_file)
+	}
+	first, certs := certs[0], certs[1:]
+	cert, err := LoadCertificateFromPEM(first)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +197,17 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 	err = ctx.UseCertificate(cert)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, pem := range certs {
+		cert, err := LoadCertificateFromPEM(pem)
+		if err != nil {
+			return nil, err
+		}
+		err = ctx.AddChainCertificate(cert)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	key_bytes, err := ioutil.ReadFile(key_file)
@@ -283,6 +299,35 @@ type CertificateStore struct {
 	// for GC
 	ctx   *Ctx
 	certs []*Certificate
+}
+
+// Allocate a new, empty CertificateStore
+func NewCertificateStore() (*CertificateStore, error) {
+	s := C.X509_STORE_new()
+	if s == nil {
+		return nil, errors.New("failed to allocate X509_STORE")
+	}
+	store := &CertificateStore{store: s}
+	runtime.SetFinalizer(store, func(s *CertificateStore) {
+		C.X509_STORE_free(s.store)
+	})
+	return store, nil
+}
+
+// Parse a chained PEM file, loading all certificates into the Store.
+func (s *CertificateStore) LoadCertificatesFromPEM(data []byte) error {
+	pems := SplitPEM(data)
+	for _, pem := range pems {
+		cert, err := LoadCertificateFromPEM(pem)
+		if err != nil {
+			return err
+		}
+		err = s.AddCertificate(cert)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // GetCertificateStore returns the context's certificate store that will be
