@@ -153,7 +153,13 @@ func (ctx *cipherCtx) applyKeyAndIV(key, iv []byte) error {
 		iptr = (*C.uchar)(&iv[0])
 	}
 	if kptr != nil || iptr != nil {
-		if 1 != C.EVP_EncryptInit_ex(ctx.ctx, nil, nil, kptr, iptr) {
+		var res C.int
+		if ctx.ctx.encrypt != 0 {
+			res = C.EVP_EncryptInit_ex(ctx.ctx, nil, nil, kptr, iptr)
+		} else {
+			res = C.EVP_DecryptInit_ex(ctx.ctx, nil, nil, kptr, iptr)
+		}
+		if 1 != res {
 			return errors.New("failed to apply key/IV")
 		}
 	}
