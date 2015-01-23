@@ -63,7 +63,7 @@ static long SSL_CTX_set_tmp_ecdh_not_a_macro(SSL_CTX* ctx, EC_KEY *key) {
 #endif
 
 static const SSL_METHOD *OUR_TLSv1_1_method() {
-#ifdef TLS1_1_VERSION
+#if defined(TLS1_1_VERSION) && !defined(OPENSSL_SYSNAME_MACOSX)
     return TLSv1_1_method();
 #else
     return NULL;
@@ -71,7 +71,7 @@ static const SSL_METHOD *OUR_TLSv1_1_method() {
 }
 
 static const SSL_METHOD *OUR_TLSv1_2_method() {
-#ifdef TLS1_2_VERSION
+#if defined(TLS1_2_VERSION) && !defined(OPENSSL_SYSNAME_MACOSX)
     return TLSv1_2_method();
 #else
     return NULL;
