@@ -37,6 +37,10 @@ package openssl
 //   unsigned int cnt) {
 //     return EVP_VerifyUpdate(ctx, d, cnt);
 // }
+//
+// int EVP_PKEY_assign_charp(EVP_PKEY *pkey, int type, char *key) {
+//     return EVP_PKEY_assign(pkey, type, key);
+// }
 import "C"
 
 import (
@@ -321,7 +325,7 @@ func GenerateRSAKey(bits int) (PrivateKey, error) {
 	if key == nil {
 		return nil, errors.New("failed to allocate EVP_PKEY")
 	}
-	if C.EVP_PKEY_assign(key, C.EVP_PKEY_RSA, (*C.char)(unsafe.Pointer(rsa))) != 1 {
+	if C.EVP_PKEY_assign_charp(key, C.EVP_PKEY_RSA, (*C.char)(unsafe.Pointer(rsa))) != 1 {
 		C.EVP_PKEY_free(key)
 		return nil, errors.New("failed to assign RSA key")
 	}
