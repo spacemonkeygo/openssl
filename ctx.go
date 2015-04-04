@@ -21,6 +21,10 @@ package openssl
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/conf.h>
+#include <openssl/tls1.h>
+#include <openssl/rand.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
 
 static long SSL_CTX_set_options_not_a_macro(SSL_CTX* ctx, long options) {
    return SSL_CTX_set_options(ctx, options);
@@ -54,6 +58,10 @@ static long SSL_CTX_set_tmp_ecdh_not_a_macro(SSL_CTX* ctx, EC_KEY *key) {
     return SSL_CTX_set_tmp_ecdh(ctx, key);
 }
 
+static long SSL_CTX_set_tlsext_ticket_key_cb_not_a_macro(SSL_CTX *sslctx, int (*cb)(SSL *con, unsigned char *key_name, unsigned char *iv, EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc)) {
+    return SSL_CTX_set_tlsext_ticket_key_cb(sslctx, cb);
+}
+
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
 #endif
@@ -78,7 +86,14 @@ static const SSL_METHOD *OUR_TLSv1_2_method() {
 #endif
 }
 
+#ifdef OPENSSL_NO_SHA256
+#define tls_session_ticket_md  EVP_sha1
+#else
+#define tls_session_ticket_md  EVP_sha256
+#endif
+
 extern int verify_cb(int ok, X509_STORE_CTX* store);
+extern int ticket_cb(SSL *con, unsigned char *key_name, unsigned char *iv, EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc);
 */
 import "C"
 
@@ -89,6 +104,7 @@ import (
 	"os"
 	"runtime"
 	"unsafe"
+	"bytes"
 
 	"github.com/spacemonkeygo/spacelog"
 )
@@ -105,6 +121,8 @@ type Ctx struct {
 	chain     []*Certificate
 	key       PrivateKey
 	verify_cb VerifyCallback
+	tickets   []*TLSTicket 
+	ticket_cb TLSTicketCallback
 }
 
 //export get_ssl_ctx_idx
@@ -225,6 +243,47 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 		return nil, err
 	}
 
+	return ctx, nil
+}
+
+// NewCtxFromFilesTickets calls NewCtxFromFiles, loads the provided files, and 
+// configures the context to use them with TLS Tikets rfc5077.
+func NewCtxFromFilesTickets(cert_file, key_file string, ticket_files []string) (*Ctx, error) {
+	if hasOpenSSLNoTLSExt() || getOpenSSLVersion() < 0x0090800f {
+		return nil, errors.New("There is no support TLS tickets in your OpenSSL version")
+	}
+
+	ctx, err := NewCtxFromFiles(cert_file, key_file)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ticket_files) < 1 {
+		return nil, errors.New("There are no TLS tickets")
+	}
+
+	tickets := make([]*TLSTicket, len(ticket_files))
+
+	for i, ticket_file := range ticket_files {
+		ticketBytes, err := ioutil.ReadFile(ticket_file)
+		if err != nil {
+			return nil, err
+		}
+
+		ticket, err := NewTLSTicket(ticketBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		tickets[i] = ticket
+	}
+
+	if (C.SSL_CTX_set_tlsext_ticket_key_cb_not_a_macro(ctx.ctx, (*[0]byte)(C.ticket_cb)) == 0) {
+		return nil, errors.New("Session Tickets are not available. Please check your version of openssl")
+	}
+	
+	ctx.tickets = tickets
+	
 	return ctx, nil
 }
 
@@ -562,4 +621,78 @@ const (
 func (c *Ctx) SetSessionCacheMode(modes SessionCacheModes) SessionCacheModes {
 	return SessionCacheModes(
 		C.SSL_CTX_set_session_cache_mode_not_a_macro(c.ctx, C.long(modes)))
+}
+
+//export ticket_cb_thunk
+func ticket_cb_thunk(p unsafe.Pointer, con *C.SSL, key_name unsafe.Pointer, iv *C.uchar,
+		          ectx *C.EVP_CIPHER_CTX, hctx *C.HMAC_CTX, enc C.int) C.int {
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Critf("openssl: ticket callback panic'd: %v", err)
+			os.Exit(1)
+		}
+	}()
+
+	ssl_ctx := C.SSL_get_SSL_CTX(con)
+	ctx := (*Ctx)(unsafe.Pointer(C.SSL_CTX_get_ex_data(ssl_ctx, get_ssl_ctx_idx())))
+
+	if (enc == 1) {
+		// encrypt session ticket 
+		C.RAND_bytes(iv, 16)
+		C.EVP_EncryptInit_ex(ectx, C.EVP_aes_128_cbc(), nil, (*C.uchar)(unsafe.Pointer(&ctx.tickets[0].aes[0])), iv)
+		C.HMAC_Init_ex(hctx, unsafe.Pointer(&ctx.tickets[0].hmac[0]), 16, C.tls_session_ticket_md(), nil)
+		C.memcpy(key_name, unsafe.Pointer(&ctx.tickets[0].name[0]), 16)
+		
+		logger.Debugf("session ticket encrypt key: %x, enc: %d", ctx.tickets[0].name, enc)
+
+		// run callback	
+		if ctx.ticket_cb != nil {
+			ctx.ticket_cb(TLSTicketResume)
+		}
+		return C.int(TLSTicketResume)
+
+	} else {
+		// decrypt session ticket
+		i := -1
+		for j, ticket := range ctx.tickets  {
+			if bytes.Equal(ticket.name, C.GoBytes(key_name, 16)) {
+				i = j
+				goto Found
+			}
+        }
+
+        logger.Debugf("session ticket decrypt key not found: %x, enc: %d", C.GoBytes(key_name, 16), enc)
+
+        // run callback	
+		if ctx.ticket_cb != nil {
+			ctx.ticket_cb(TLSTicketError)
+		}
+        return C.int(TLSTicketError)
+
+    Found:
+
+        logger.Debugf("session ticket decrypt key: %x, key_id: %d, enc: %d", ctx.tickets[i].name, i, enc)
+
+		C.HMAC_Init_ex(hctx, unsafe.Pointer(&ctx.tickets[i].hmac[0]), 16, C.tls_session_ticket_md(), nil);
+        C.EVP_DecryptInit_ex(ectx, C.EVP_aes_128_cbc(), nil, (*C.uchar)(unsafe.Pointer(&ctx.tickets[i].aes[0])), iv);
+		
+		if i == 0 {
+			// run callback	
+			if ctx.ticket_cb != nil {
+				ctx.ticket_cb(TLSTicketResume)
+			}
+			return C.int(TLSTicketResume)
+		}
+		// run callback	
+		if ctx.ticket_cb != nil {
+			ctx.ticket_cb(TLSTicketRenew)
+		}
+		return C.int(TLSTicketRenew)
+	}
+}
+
+// SetTicketCallback set tls ticket callback function.
+// See more about tls ticket http://www.ietf.org/rfc/rfc5077.
+func (c *Ctx) SetTicketCallback(ticket_cb TLSTicketCallback) {
+	c.ticket_cb = ticket_cb	
 }

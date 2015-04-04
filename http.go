@@ -48,6 +48,37 @@ func ServerListenAndServeTLS(srv *http.Server,
 	return srv.Serve(l)
 }
 
+// ListenAndServeTLSTickets will take an http.Handler and serve it using OpenSSL 
+//over the given tcp address, configured to use the provided cert, key files and
+// tls tickets rfc5077.
+func ListenAndServeTLSTickets(addr string, cert_file string, key_file string,
+	ticket_files []string, handler http.Handler) error {
+	return ServerListenAndServeTLSTickets(
+		&http.Server{Addr: addr, Handler: handler}, cert_file, key_file, ticket_files)
+}
+
+// ServerListenAndServeTLSTickets will take an http.Server and serve it using 
+//OpenSSL configured to use the provided cert, key files and tls tickets rfc5077.
+func ServerListenAndServeTLSTickets(srv *http.Server,
+	cert_file, key_file string, ticket_files []string) error {
+	addr := srv.Addr
+	if addr == "" {
+		addr = ":https"
+	}
+
+	ctx, err := NewCtxFromFilesTickets(cert_file, key_file, ticket_files)
+	if err != nil {
+		return err
+	}
+
+	l, err := Listen("tcp", addr, ctx)
+	if err != nil {
+		return err
+	}
+
+	return srv.Serve(l)
+}
+
 // TODO: http client integration
 // holy crap, getting this integrated nicely with the Go stdlib HTTP client
 // stack so that it does proxying, connection pooling, and most importantly
