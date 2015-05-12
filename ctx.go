@@ -42,6 +42,22 @@ static long SSL_CTX_set_session_cache_mode_not_a_macro(SSL_CTX* ctx, long modes)
    return SSL_CTX_set_session_cache_mode(ctx, modes);
 }
 
+static long SSL_CTX_sess_set_cache_size_not_a_macro(SSL_CTX* ctx, long t) {
+	return SSL_CTX_sess_set_cache_size(ctx, t);
+}
+
+static long SSL_CTX_sess_get_cache_size_not_a_macro(SSL_CTX* ctx) {
+	return SSL_CTX_sess_get_cache_size(ctx);
+}
+
+static long SSL_CTX_set_timeout_not_a_macro(SSL_CTX* ctx, long t) {
+   return SSL_CTX_set_timeout(ctx, t);
+}
+
+static long SSL_CTX_get_timeout_not_a_macro(SSL_CTX* ctx) {
+   return SSL_CTX_get_timeout(ctx);
+}
+
 static int CRYPTO_add_not_a_macro(int *pointer,int amount,int type) {
    return CRYPTO_add(pointer, amount, type);
 }
@@ -562,4 +578,28 @@ const (
 func (c *Ctx) SetSessionCacheMode(modes SessionCacheModes) SessionCacheModes {
 	return SessionCacheModes(
 		C.SSL_CTX_set_session_cache_mode_not_a_macro(c.ctx, C.long(modes)))
+}
+
+// Set session cache timeout in seconds. Returns previously set value.
+// See https://www.openssl.org/docs/ssl/SSL_CTX_set_timeout.html
+func (c *Ctx) SetTimeout(t int) int {
+	return int(C.SSL_CTX_set_timeout_not_a_macro(c.ctx, C.long(t)))
+}
+
+// Get session cache timeout in seconds.
+// See https://www.openssl.org/docs/ssl/SSL_CTX_set_timeout.html
+func (c *Ctx) GetTimeout() int {
+	return int(C.SSL_CTX_get_timeout_not_a_macro(c.ctx))
+}
+
+// Set session cache size. Returns previously set value.
+// https://www.openssl.org/docs/ssl/SSL_CTX_sess_set_cache_size.html
+func (c *Ctx) SessSetCacheSize(t int) int {
+	return int(C.SSL_CTX_sess_set_cache_size_not_a_macro(c.ctx, C.long(t)))
+}
+
+// Get session cache size.
+// https://www.openssl.org/docs/ssl/SSL_CTX_sess_set_cache_size.html
+func (c *Ctx) SessGetCacheSize() int {
+	return int(C.SSL_CTX_sess_get_cache_size_not_a_macro(c.ctx))
 }
