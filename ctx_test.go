@@ -16,12 +16,13 @@ package openssl
 
 import (
 	"testing"
+	"time"
 )
 
 func TestCtxTimeoutOption(t *testing.T) {
 	ctx, _ := NewCtx()
 	oldTimeout1 := ctx.GetTimeout()
-	newTimeout1 := oldTimeout1 + 8362
+	newTimeout1 := oldTimeout1 + (time.Duration(99) * time.Second)
 	oldTimeout2 := ctx.SetTimeout(newTimeout1)
 	newTimeout2 := ctx.GetTimeout()
 	if oldTimeout1 != oldTimeout2 {

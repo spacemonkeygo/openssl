@@ -104,6 +104,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
+	"time"
 	"unsafe"
 
 	"github.com/spacemonkeygo/spacelog"
@@ -580,16 +581,17 @@ func (c *Ctx) SetSessionCacheMode(modes SessionCacheModes) SessionCacheModes {
 		C.SSL_CTX_set_session_cache_mode_not_a_macro(c.ctx, C.long(modes)))
 }
 
-// Set session cache timeout in seconds. Returns previously set value.
+// Set session cache timeout. Returns previously set value.
 // See https://www.openssl.org/docs/ssl/SSL_CTX_set_timeout.html
-func (c *Ctx) SetTimeout(t int) int {
-	return int(C.SSL_CTX_set_timeout_not_a_macro(c.ctx, C.long(t)))
+func (c *Ctx) SetTimeout(t time.Duration) time.Duration {
+	prev := C.SSL_CTX_set_timeout_not_a_macro(c.ctx, C.long(t/time.Second))
+	return time.Duration(prev) * time.Second
 }
 
-// Get session cache timeout in seconds.
+// Get session cache timeout.
 // See https://www.openssl.org/docs/ssl/SSL_CTX_set_timeout.html
-func (c *Ctx) GetTimeout() int {
-	return int(C.SSL_CTX_get_timeout_not_a_macro(c.ctx))
+func (c *Ctx) GetTimeout() time.Duration {
+	return time.Duration(C.SSL_CTX_get_timeout_not_a_macro(c.ctx)) * time.Second
 }
 
 // Set session cache size. Returns previously set value.
