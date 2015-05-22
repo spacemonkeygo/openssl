@@ -61,7 +61,7 @@ func (h *HMAC) Close() {
 	C.HMAC_CTX_cleanup(&h.ctx)
 }
 
-func (s *HMAC) Update(data []byte) (n int, err error) {
+func (s *HMAC) Write(data []byte) (n int, err error) {
 	if len(data) == 0 {
 		return 0, nil
 	}

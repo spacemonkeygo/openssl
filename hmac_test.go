@@ -26,14 +26,13 @@ import (
 
 func TestSHA256HMAC(t *testing.T) {
 	h, _ := NewHMAC([]byte("d741787cc61851af045ccd37"), EVP_SHA256)
-	h.Update([]byte("5912EEFD-59EC-43E3-ADB8-D5325AEC3271"))
+	h.Write([]byte("5912EEFD-59EC-43E3-ADB8-D5325AEC3271"))
 
 	var result []byte
 	var err error
 	if result, err = h.Final(); err != nil {
 		t.Fatalf("Error while finalizing HMAC: %s", err)
 	}
-	fmt.Printf("HMAC: %s", string(result))
 }
 
 // func TestSHA256Writer(t *testing.T) {
