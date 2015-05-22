@@ -270,7 +270,14 @@ func (c *Certificate) Sign(privKey PrivateKey, digest EVP_MD) error {
 }
 
 func (c *Certificate) insecureSign(privKey PrivateKey, digest EVP_MD) error {
-	var md *C.EVP_MD
+	var md *C.EVP_MD = getDigestFunction(digest)
+	if C.X509_sign(c.x, privKey.evpPKey(), md) <= 0 {
+		return errors.New("failed to sign certificate")
+	}
+	return nil
+}
+
+func getDigestFunction(digest EVP_MD) (md *C.EVP_MD) {
 	switch digest {
 	// please don't use these digest functions
 	case EVP_NULL:
@@ -297,10 +304,7 @@ func (c *Certificate) insecureSign(privKey PrivateKey, digest EVP_MD) error {
 	case EVP_SHA512:
 		md = C.EVP_sha512()
 	}
-	if C.X509_sign(c.x, privKey.evpPKey(), md) <= 0 {
-		return errors.New("failed to sign certificate")
-	}
-	return nil
+	return
 }
 
 // Add an extension to a certificate.
