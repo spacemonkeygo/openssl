@@ -77,6 +77,5 @@ func (h *HMAC) Final() (result []byte, err error) {
 	mdLength := C.EVP_MD_size(h.md)
 	result = make([]byte, mdLength)
 	C.HMAC_Final(&h.ctx, (*C.uchar)(unsafe.Pointer(&result[0])), (*C.uint)(unsafe.Pointer(&mdLength)))
-	h.Reset()
-	return result, nil
+	return result, h.Reset()
 }
