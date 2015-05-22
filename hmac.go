@@ -28,7 +28,6 @@ package openssl
 import "C"
 
 import (
-	"fmt"
 	"runtime"
 	"unsafe"
 )
@@ -76,7 +75,6 @@ func (h *HMAC) Reset() error {
 
 func (h *HMAC) Final() (result []byte, err error) {
 	mdLength := C.EVP_MD_size(h.md)
-	fmt.Printf("MD Cipher length: %d\n", mdLength)
 	result = make([]byte, mdLength)
 	C.HMAC_Final(&h.ctx, (*C.uchar)(unsafe.Pointer(&result[0])), (*C.uint)(unsafe.Pointer(&mdLength)))
 	h.Reset()
