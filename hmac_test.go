@@ -17,86 +17,44 @@
 package openssl
 
 import (
-	// "crypto/rand"
-	// "crypto/sha256"
-	// "io"
-	"fmt"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 )
 
 func TestSHA256HMAC(t *testing.T) {
-	h, _ := NewHMAC([]byte("d741787cc61851af045ccd37"), EVP_SHA256)
-	h.Write([]byte("5912EEFD-59EC-43E3-ADB8-D5325AEC3271"))
+	key := []byte("d741787cc61851af045ccd37")
+	data := []byte("5912EEFD-59EC-43E3-ADB8-D5325AEC3271")
+	h, _ := NewHMAC(key, EVP_SHA256)
+	h.Write(data)
 
-	var result []byte
 	var err error
-	if result, err = h.Final(); err != nil {
+	var actualHMACBytes []byte
+	if actualHMACBytes, err = h.Final(); err != nil {
 		t.Fatalf("Error while finalizing HMAC: %s", err)
+	}
+	actualString := hex.EncodeToString(actualHMACBytes)
+
+	// generate HMAC with built-in crypto lib
+	mac := hmac.New(sha256.New, key)
+	mac.Write(data)
+	expectedString := hex.EncodeToString(mac.Sum(nil))
+
+	if expectedString != actualString {
+		t.Errorf("HMAC was incorrect: expected=%s, actual=%s", expectedString, actualString)
 	}
 }
 
-// func TestSHA256Writer(t *testing.T) {
-// 	ohash, err := NewSHA256Hash()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	hash := sha256.New()
+func BenchmarkSHA256HMAC(b *testing.B) {
+	h, _ := NewHMAC([]byte("d741787cc61851af045ccd37"), EVP_SHA256)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		h.Write([]byte("5912EEFD-59EC-43E3-ADB8-D5325AEC3271"))
 
-// 	for i := 0; i < 100; i++ {
-// 		if err := ohash.Reset(); err != nil {
-// 			t.Fatal(err)
-// 		}
-// 		hash.Reset()
-// 		buf := make([]byte, 10*1024-i)
-// 		if _, err := io.ReadFull(rand.Reader, buf); err != nil {
-// 			t.Fatal(err)
-// 		}
-
-// 		if _, err := ohash.Write(buf); err != nil {
-// 			t.Fatal(err)
-// 		}
-// 		if _, err := hash.Write(buf); err != nil {
-// 			t.Fatal(err)
-// 		}
-
-// 		var got, exp [32]byte
-
-// 		hash.Sum(exp[:0])
-// 		got, err := ohash.Sum()
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-
-// 		if got != exp {
-// 			t.Fatal("exp:%x got:%x", exp, got)
-// 		}
-// 	}
-// }
-
-// func benchmarkSHA256(b *testing.B, length int64, fn shafunc) {
-// 	buf := make([]byte, length)
-// 	if _, err := io.ReadFull(rand.Reader, buf); err != nil {
-// 		b.Fatal(err)
-// 	}
-// 	b.SetBytes(length)
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		fn(buf)
-// 	}
-// }
-
-// func BenchmarkSHA256Large_openssl(b *testing.B) {
-// 	benchmarkSHA256(b, 1024*1024, func(buf []byte) { SHA256(buf) })
-// }
-
-// func BenchmarkSHA256Large_stdlib(b *testing.B) {
-// 	benchmarkSHA256(b, 1024*1024, func(buf []byte) { sha256.Sum256(buf) })
-// }
-
-// func BenchmarkSHA256Small_openssl(b *testing.B) {
-// 	benchmarkSHA256(b, 1, func(buf []byte) { SHA256(buf) })
-// }
-
-// func BenchmarkSHA256Small_stdlib(b *testing.B) {
-// 	benchmarkSHA256(b, 1, func(buf []byte) { sha256.Sum256(buf) })
-// }
+		var err error
+		if _, err = h.Final(); err != nil {
+			b.Fatalf("Error while finalizing HMAC: %s", err)
+		}
+	}
+}
