@@ -106,6 +106,19 @@ func (n *Name) AddTextEntries(entries map[string]string) error {
 	return nil
 }
 
+// GetEntry returns a name entry based on NID.  If no entry, then ("", false) is
+// returned.
+func (n *Name) GetEntry(nid NID) (entry string, ok bool) {
+	entrylen := C.X509_NAME_get_text_by_NID(n.name, C.int(nid), nil, 0)
+	if entrylen == -1 {
+		return "", false
+	}
+	buf := (*C.char)(C.malloc(C.size_t(entrylen + 1)))
+	defer C.free(unsafe.Pointer(buf))
+	C.X509_NAME_get_text_by_NID(n.name, C.int(nid), buf, entrylen+1)
+	return C.GoStringN(buf, entrylen), true
+}
+
 // NewCertificate generates a basic certificate based
 // on the provided CertificateInfo struct
 func NewCertificate(info *CertificateInfo, key PublicKey) (*Certificate, error) {

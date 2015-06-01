@@ -99,3 +99,40 @@ func TestCAGenerate(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCertGetNameEntry(t *testing.T) {
+	key, err := GenerateRSAKey(2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := &CertificateInfo{
+		Serial:       1,
+		Issued:       0,
+		Expires:      24 * time.Hour,
+		Country:      "US",
+		Organization: "Test",
+		CommonName:   "localhost",
+	}
+	cert, err := NewCertificate(info, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, err := cert.GetSubjectName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, ok := name.GetEntry(NID_commonName)
+	if !ok {
+		t.Fatal("no common name")
+	}
+	if entry != "localhost" {
+		t.Fatalf("expected localhost; got %q", entry)
+	}
+	entry, ok = name.GetEntry(NID_localityName)
+	if ok {
+		t.Fatal("did not expect a locality name")
+	}
+	if entry != "" {
+		t.Fatalf("entry should be empty; got %q", entry)
+	}
+}
