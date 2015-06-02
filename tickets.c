@@ -1,4 +1,4 @@
-// Copyright (C) 2014 Space Monkey, Inc.
+// Copyright (C) 2015 Space Monkey, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,15 @@
 // limitations under the License.
 
 #include <openssl/ssl.h>
+#include <openssl/evp.h>
 #include "_cgo_export.h"
 
-int verify_cb(int ok, X509_STORE_CTX* store) {
-	SSL* ssl = (SSL *)X509_STORE_CTX_get_app_data(store);
-	SSL_CTX* ssl_ctx = SSL_get_SSL_CTX(ssl);
+int ticket_key_cb(SSL *s, unsigned char key_name[16],
+		unsigned char iv[EVP_MAX_IV_LENGTH],
+		EVP_CIPHER_CTX *cctx, HMAC_CTX *hctx, int enc) {
+
+	SSL_CTX* ssl_ctx = SSL_get_SSL_CTX(s);
 	void* p = SSL_CTX_get_ex_data(ssl_ctx, get_ssl_ctx_idx());
 	// get the pointer to the go Ctx object and pass it back into the thunk
-	return verify_cb_thunk(p, ok, store);
+	return ticket_key_cb_thunk(p, s, key_name, iv, cctx, hctx, enc);
 }

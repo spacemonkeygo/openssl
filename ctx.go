@@ -104,6 +104,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -122,6 +123,9 @@ type Ctx struct {
 	chain     []*Certificate
 	key       PrivateKey
 	verify_cb VerifyCallback
+
+	ticket_store_mu sync.Mutex
+	ticket_store    *TicketStore
 }
 
 //export get_ssl_ctx_idx
