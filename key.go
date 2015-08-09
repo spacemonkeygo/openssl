@@ -74,9 +74,12 @@ type PublicKey interface {
 	// format
 	MarshalPKIXPublicKeyDER() (der_block []byte, err error)
 
+	// Get the RSA Size
+	RSASize() (int, error)
+
 	// Encrypt a src byte array into dst. Returns the number of bytes encrypted.
-	// src must be shorter than RSA_SIZE - c where c is a constant based on the padding
-	// dst must be at least RSA_SIZE
+	// src must be shorter than RSASize() - c where c is a constant based on the padding
+	// dst must be at least RSASize()
 	// padding is usually defaulted to openssl.RSA_PADDING_PKCS1
 	PublicEncrypt(dst []byte, src []byte, padding int) (int, error)
 
@@ -98,8 +101,8 @@ type PrivateKey interface {
 	MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
 
 	// Decrpyt the src byte array into dst. Returns the number of bytes decrypted.
-	// src must be shorter than RSA_SIZE - c where c is a constant based on the padding
-	// dst must be at least RSA_SIZE
+	// src must be shorter than RSASize() - c where c is a constant based on the padding
+	// dst must be at least RSASize()
 	// padding must be the same as the one used to encrypt the data
 	PrivateDecrypt(dst []byte, src []byte, padding int) (int, error)
 }
@@ -354,6 +357,16 @@ func GenerateRSAKey(bits int) (PrivateKey, error) {
 	return p, nil
 }
 
+func (key *pKey) RSASize() (int, error) {
+	rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+	if rsa == nil {
+		return 0, errors.New("failed getting rsa key")
+	}
+	defer C.RSA_free(rsa)
+
+	return int(C.RSA_size(rsa)), nil
+}
+
 func (key *pKey) PublicEncrypt(dst []byte, src []byte, padding int) (int, error) {
 	rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
 	if rsa == nil {
@@ -361,9 +374,7 @@ func (key *pKey) PublicEncrypt(dst []byte, src []byte, padding int) (int, error)
 	}
 	defer C.RSA_free(rsa)
 
-	srcArray := (*C.uchar)(unsafe.Pointer(&src[0]))
-	dstArray := (*C.uchar)(unsafe.Pointer(&dst[0]))
-	outlen := C.RSA_public_encrypt(C.int(len(src)), srcArray, dstArray, rsa, C.int(padding))
+	outlen := C.RSA_public_encrypt(C.int(len(src)), (*C.uchar)(unsafe.Pointer(&src[0])), (*C.uchar)(unsafe.Pointer(&dst[0])), rsa, C.int(padding))
 	if outlen > 0 {
 		return int(outlen), nil
 	} else {
@@ -378,9 +389,7 @@ func (key *pKey) PrivateDecrypt(dst []byte, src []byte, padding int) (int, error
 	}
 	defer C.RSA_free(rsa)
 
-	srcArray := (*C.uchar)(unsafe.Pointer(&src[0]))
-	dstArray := (*C.uchar)(unsafe.Pointer(&dst[0]))
-	outlen := C.RSA_private_decrypt(C.int(len(src)), srcArray, dstArray, rsa, C.int(padding))
+	outlen := C.RSA_private_decrypt(C.int(len(src)), (*C.uchar)(unsafe.Pointer(&src[0])), (*C.uchar)(unsafe.Pointer(&dst[0])), rsa, C.int(padding))
 	if outlen > 0 {
 		return int(outlen), nil
 	} else {
