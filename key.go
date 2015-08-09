@@ -19,6 +19,7 @@ package openssl
 // #include <openssl/evp.h>
 // #include <openssl/ssl.h>
 // #include <openssl/conf.h>
+// #include <openssl/rsa.h>
 //
 // int EVP_SignInit_not_a_macro(EVP_MD_CTX *ctx, const EVP_MD *type) {
 //     return EVP_SignInit(ctx, type);
@@ -53,7 +54,12 @@ import (
 type Method *C.EVP_MD
 
 var (
-	SHA256_Method Method = C.EVP_sha256()
+	SHA256_Method          Method = C.EVP_sha256()
+	RSA_PADDING_PKCS1      int    = C.RSA_PKCS1_PADDING
+	RSA_PADDING_SSLV23     int    = C.RSA_SSLV23_PADDING
+	RSA_PADDING_NO         int    = C.RSA_NO_PADDING
+	RSA_PADDING_PKCS1_OAEP int    = C.RSA_PKCS1_OAEP_PADDING
+	RSA_PADDING_X931       int    = C.RSA_X931_PADDING
 )
 
 type PublicKey interface {
@@ -67,6 +73,12 @@ type PublicKey interface {
 	// MarshalPKIXPublicKeyDER converts the public key to DER-encoded PKIX
 	// format
 	MarshalPKIXPublicKeyDER() (der_block []byte, err error)
+
+	// Encrypt a src byte array into dst. Returns the number of bytes encrypted.
+	// src must be shorter than RSA_SIZE - c where c is a constant based on the padding
+	// dst must be at least RSA_SIZE
+	// padding is usually defaulted to openssl.RSA_PADDING_PKCS1
+	PublicEncrypt(dst []byte, src []byte, padding int) (int, error)
 
 	evpPKey() *C.EVP_PKEY
 }
@@ -84,6 +96,12 @@ type PrivateKey interface {
 	// MarshalPKCS1PrivateKeyDER converts the private key to DER-encoded PKCS1
 	// format
 	MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
+
+	// Decrpyt the src byte array into dst. Returns the number of bytes decrypted.
+	// src must be shorter than RSA_SIZE - c where c is a constant based on the padding
+	// dst must be at least RSA_SIZE
+	// padding must be the same as the one used to encrypt the data
+	PrivateDecrypt(dst []byte, src []byte, padding int) (int, error)
 }
 
 type pKey struct {
@@ -334,4 +352,38 @@ func GenerateRSAKey(bits int) (PrivateKey, error) {
 		C.EVP_PKEY_free(p.key)
 	})
 	return p, nil
+}
+
+func (key *pKey) PublicEncrypt(dst []byte, src []byte, padding int) (int, error) {
+	rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+	if rsa == nil {
+		return 0, errors.New("failed getting rsa key")
+	}
+	defer C.RSA_free(rsa)
+
+	srcArray := (*C.uchar)(unsafe.Pointer(&src[0]))
+	dstArray := (*C.uchar)(unsafe.Pointer(&dst[0]))
+	outlen := C.RSA_public_encrypt(C.int(len(src)), srcArray, dstArray, rsa, C.int(padding))
+	if outlen > 0 {
+		return int(outlen), nil
+	} else {
+		return int(outlen), errors.New("unable to decrypt")
+	}
+}
+
+func (key *pKey) PrivateDecrypt(dst []byte, src []byte, padding int) (int, error) {
+	rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+	if rsa == nil {
+		return 0, errors.New("failed getting rsa key")
+	}
+	defer C.RSA_free(rsa)
+
+	srcArray := (*C.uchar)(unsafe.Pointer(&src[0]))
+	dstArray := (*C.uchar)(unsafe.Pointer(&dst[0]))
+	outlen := C.RSA_private_decrypt(C.int(len(src)), srcArray, dstArray, rsa, C.int(padding))
+	if outlen > 0 {
+		return int(outlen), nil
+	} else {
+		return int(outlen), errors.New("unable to decrypt")
+	}
 }
