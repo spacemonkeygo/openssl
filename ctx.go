@@ -70,6 +70,29 @@ static long SSL_CTX_set_tmp_ecdh_not_a_macro(SSL_CTX* ctx, EC_KEY *key) {
     return SSL_CTX_set_tmp_ecdh(ctx, key);
 }
 
+static long SSL_CTX_set_tlsext_servername_callback_not_a_macro(SSL_CTX* ctx, void (*fp)()) {
+    return SSL_CTX_set_tlsext_servername_callback(ctx, fp);
+}
+
+typedef struct CtxWrapper {
+    void *go_ctx;
+    SSL_CTX *ctx;
+} CtxWrapper;
+
+extern int call_servername_cb(SSL* ssl, int ad, void* arg);
+
+static int call_go_servername(SSL* ssl, int ad, void* arg) {
+    return call_servername_cb(ssl, ad, arg);
+}
+
+static int servername_gateway(CtxWrapper* cw) {
+    SSL_CTX* ctx = cw->ctx;
+    //TODO: figure out what to do with return codes. The first isn't 0
+    SSL_CTX_set_tlsext_servername_callback(ctx, call_go_servername);
+    SSL_CTX_set_tlsext_servername_arg(ctx, cw->go_ctx);
+    return 0;
+}
+
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
 #endif
@@ -122,6 +145,8 @@ type Ctx struct {
 	chain     []*Certificate
 	key       PrivateKey
 	verify_cb VerifyCallback
+	//servername_cb ServerNameCallback
+	servername_cb func(ssl unsafe.Pointer, ad int, arg unsafe.Pointer) int
 }
 
 //export get_ssl_ctx_idx
@@ -604,4 +629,25 @@ func (c *Ctx) SessSetCacheSize(t int) int {
 // https://www.openssl.org/docs/ssl/SSL_CTX_sess_set_cache_size.html
 func (c *Ctx) SessGetCacheSize() int {
 	return int(C.SSL_CTX_sess_get_cache_size_not_a_macro(c.ctx))
+}
+
+// Set SSL_CTX_set_tlsext_servername_callback
+// https://www.openssl.org/docs/manmaster/ssl/???
+//type ServerNameCallback func(ssl *C.SSL, ad C.int, arg unsafe.Pointer) int
+
+//export call_servername_cb
+func call_servername_cb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
+	var c *Ctx = (*Ctx)(arg)
+	ret := c.servername_cb(unsafe.Pointer(ssl), int(ad), arg)
+	return C.int(ret)
+}
+
+//func (c *Ctx) SetTlsExtServerNameCallback(cb ServerNameCallback) int {
+func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl unsafe.Pointer, ad int, arg unsafe.Pointer) int) int {
+	c.servername_cb = cb
+	cw := C.CtxWrapper{
+		go_ctx: unsafe.Pointer(c),
+		ctx:    c.ctx,
+	}
+	return int(C.servername_gateway(&cw))
 }
