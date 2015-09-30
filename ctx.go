@@ -79,10 +79,10 @@ typedef struct CtxWrapper {
     SSL_CTX *ctx;
 } CtxWrapper;
 
-extern int call_servername_cb(SSL* ssl, int ad, void* arg);
+extern int callServerNameCb(SSL* ssl, int ad, void* arg);
 
 static int call_go_servername(SSL* ssl, int ad, void* arg) {
-    return call_servername_cb(ssl, ad, arg);
+    return callServerNameCb(ssl, ad, arg);
 }
 
 static int servername_gateway(CtxWrapper* cw) {
@@ -635,8 +635,8 @@ func (c *Ctx) SessGetCacheSize() int {
 // https://www.openssl.org/docs/manmaster/ssl/???
 //type ServerNameCallback func(ssl *C.SSL, ad C.int, arg unsafe.Pointer) int
 
-//export call_servername_cb
-func call_servername_cb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
+//export callServerNameCb
+func callServerNameCb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
 	var c *Ctx = (*Ctx)(arg)
 
 	//setup a dummy Conn so we can associate a SSL_CTX from user callback
