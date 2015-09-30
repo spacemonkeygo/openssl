@@ -548,6 +548,11 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 	return c.conn.SetWriteDeadline(t)
 }
 
+func (c *Conn) SetCtx(ctx *Ctx) {
+	c.ctx = ctx
+	C.SSL_set_SSL_CTX(c.ssl, ctx.ctx)
+}
+
 func (c *Conn) UnderlyingConn() net.Conn {
 	return c.conn
 }
