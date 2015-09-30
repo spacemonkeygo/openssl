@@ -146,7 +146,7 @@ type Ctx struct {
 	key       PrivateKey
 	verify_cb VerifyCallback
 	//servername_cb ServerNameCallback
-	servername_cb func(ssl unsafe.Pointer, ad int, arg unsafe.Pointer) int
+	servername_cb func(ssl Conn, ad int, arg unsafe.Pointer) int
 }
 
 //export get_ssl_ctx_idx
@@ -638,12 +638,19 @@ func (c *Ctx) SessGetCacheSize() int {
 //export call_servername_cb
 func call_servername_cb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
 	var c *Ctx = (*Ctx)(arg)
-	ret := c.servername_cb(unsafe.Pointer(ssl), int(ad), arg)
+
+	//setup a dummy Conn so we can associate a SSL_CTX from user callback
+	conn := Conn{
+		ssl: ssl,
+		ctx: c,
+	}
+
+	ret := c.servername_cb(conn, int(ad), arg)
 	return C.int(ret)
 }
 
 //func (c *Ctx) SetTlsExtServerNameCallback(cb ServerNameCallback) int {
-func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl unsafe.Pointer, ad int, arg unsafe.Pointer) int) int {
+func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl Conn, ad int, arg unsafe.Pointer) int) int {
 	c.servername_cb = cb
 	cw := C.CtxWrapper{
 		go_ctx: unsafe.Pointer(c),

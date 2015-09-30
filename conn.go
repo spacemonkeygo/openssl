@@ -566,3 +566,7 @@ func (c *Conn) SetTlsExtHostName(name string) error {
 func (c *Conn) VerifyResult() VerifyResult {
 	return VerifyResult(C.SSL_get_verify_result(c.ssl))
 }
+
+func (c *Conn) GetServerName() string {
+	return C.GoString(C.SSL_get_servername(c.ssl, C.TLSEXT_NAMETYPE_host_name))
+}
