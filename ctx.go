@@ -74,10 +74,11 @@ static long SSL_CTX_set_tlsext_servername_callback_not_a_macro(SSL_CTX* ctx, voi
     return SSL_CTX_set_tlsext_servername_callback(ctx, fp);
 }
 
-typedef struct CtxWrapper {
+typedef struct TlsServernameData {
     void *go_ctx;
     SSL_CTX *ctx;
-} CtxWrapper;
+    void *arg;
+} TlsServernameData;
 
 extern int callServerNameCb(SSL* ssl, int ad, void* arg);
 
@@ -85,11 +86,11 @@ static int call_go_servername(SSL* ssl, int ad, void* arg) {
     return callServerNameCb(ssl, ad, arg);
 }
 
-static int servername_gateway(CtxWrapper* cw) {
+static int servername_gateway(TlsServernameData* cw) {
     SSL_CTX* ctx = cw->ctx;
     //TODO: figure out what to do with return codes. The first isn't 0
     SSL_CTX_set_tlsext_servername_callback(ctx, call_go_servername);
-    SSL_CTX_set_tlsext_servername_arg(ctx, cw->go_ctx);
+    SSL_CTX_set_tlsext_servername_arg(ctx, cw);
     return 0;
 }
 
@@ -147,6 +148,7 @@ type Ctx struct {
 	verify_cb VerifyCallback
 	//servername_cb ServerNameCallback
 	servername_cb func(ssl Conn, ad int, arg unsafe.Pointer) int
+	ted           C.TlsServernameData
 }
 
 //export get_ssl_ctx_idx
@@ -637,24 +639,25 @@ func (c *Ctx) SessGetCacheSize() int {
 
 //export callServerNameCb
 func callServerNameCb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
-	var c *Ctx = (*Ctx)(arg)
+	var ted *C.TlsServernameData = (*C.TlsServernameData)(arg)
+	goCtx := (*Ctx)(ted.go_ctx)
 
 	//setup a dummy Conn so we can associate a SSL_CTX from user callback
 	conn := Conn{
 		ssl: ssl,
-		ctx: c,
+		ctx: goCtx,
 	}
-
-	ret := c.servername_cb(conn, int(ad), arg)
+	ret := goCtx.servername_cb(conn, int(ad), ted.arg)
 	return C.int(ret)
 }
 
 //func (c *Ctx) SetTlsExtServerNameCallback(cb ServerNameCallback) int {
-func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl Conn, ad int, arg unsafe.Pointer) int) int {
+func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl Conn, ad int, arg unsafe.Pointer) int, arg unsafe.Pointer) int {
 	c.servername_cb = cb
-	cw := C.CtxWrapper{
+	c.ted = C.TlsServernameData{
 		go_ctx: unsafe.Pointer(c),
 		ctx:    c.ctx,
+		arg:    arg,
 	}
-	return int(C.servername_gateway(&cw))
+	return int(C.servername_gateway(&c.ted))
 }
