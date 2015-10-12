@@ -300,6 +300,8 @@ func (c *Ctx) AddChainCertificate(cert *Certificate) error {
 	if int(C.SSL_CTX_add_extra_chain_cert_not_a_macro(c.ctx, cert.x)) != 1 {
 		return errorFromErrorQueue()
 	}
+	// OpenSSL takes ownership via SSL_CTX_add_extra_chain_cert
+	runtime.SetFinalizer(cert, nil)
 	return nil
 }
 
