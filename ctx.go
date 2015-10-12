@@ -380,6 +380,10 @@ type CertificateStoreCtx struct {
 	ssl_ctx *Ctx
 }
 
+func (self *CertificateStoreCtx) VerifyResult() VerifyResult {
+	return VerifyResult(C.X509_STORE_CTX_get_error(self.ctx))
+}
+
 func (self *CertificateStoreCtx) Err() error {
 	code := C.X509_STORE_CTX_get_error(self.ctx)
 	if code == C.X509_V_OK {
