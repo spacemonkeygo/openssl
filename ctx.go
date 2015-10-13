@@ -141,13 +141,12 @@ var (
 )
 
 type Ctx struct {
-	ctx       *C.SSL_CTX
-	cert      *Certificate
-	chain     []*Certificate
-	key       PrivateKey
-	verify_cb VerifyCallback
-	//servername_cb ServerNameCallback
-	servername_cb func(ssl Conn, ad int, arg unsafe.Pointer) int
+	ctx           *C.SSL_CTX
+	cert          *Certificate
+	chain         []*Certificate
+	key           PrivateKey
+	verify_cb     VerifyCallback
+	servername_cb ServerNameCallback
 	ted           C.TlsServernameData
 }
 
@@ -635,7 +634,7 @@ func (c *Ctx) SessGetCacheSize() int {
 
 // Set SSL_CTX_set_tlsext_servername_callback
 // https://www.openssl.org/docs/manmaster/ssl/???
-//type ServerNameCallback func(ssl *C.SSL, ad C.int, arg unsafe.Pointer) int
+type ServerNameCallback func(ssl Conn, ad int, arg unsafe.Pointer) int
 
 //export callServerNameCb
 func callServerNameCb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
@@ -651,8 +650,8 @@ func callServerNameCb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
 	return C.int(ret)
 }
 
-//func (c *Ctx) SetTlsExtServerNameCallback(cb ServerNameCallback) int {
-func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl Conn, ad int, arg unsafe.Pointer) int, arg unsafe.Pointer) int {
+func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl Conn, ad int, arg unsafe.Pointer) int,
+	arg unsafe.Pointer) int {
 	c.servername_cb = cb
 	c.ted = C.TlsServernameData{
 		go_ctx: unsafe.Pointer(c),
