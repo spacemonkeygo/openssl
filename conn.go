@@ -476,6 +476,43 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 	return 0, err
 }
 
+func (c *Conn) peek(b []byte) (int, func() error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	if c.is_shutdown {
+		return 0, func() error { return io.EOF }
+	}
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	rv, errno := C.SSL_peek(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
+	if rv > 0 {
+		return int(rv), nil
+	}
+	return 0, c.getErrorHandler(rv, errno)
+}
+
+func (c *Conn) Peek(b []byte) (n int, err error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
+	err = tryAgain
+	for err == tryAgain {
+		n, errcb := c.peek(b)
+		err = c.handleError(errcb)
+		if err == nil {
+			go c.flushOutputBuffer()
+			return n, nil
+		}
+		if err == io.ErrUnexpectedEOF {
+			err = io.EOF
+		}
+	}
+	return 0, err
+}
+
 func (c *Conn) write(b []byte) (int, func() error) {
 	if len(b) == 0 {
 		return 0, nil
