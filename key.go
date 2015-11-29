@@ -245,7 +245,8 @@ func LoadPrivateKeyFromPEM(pem_block []byte) (PrivateKey, error) {
 }
 
 // LoadPrivateKeyFromPEM loads a private key from a PEM-encoded block.
-func LoadPrivateKeyFromPEMWidthPassword(pem_block []byte, password string) (PrivateKey, error) {
+func LoadPrivateKeyFromPEMWidthPassword(pem_block []byte, password string) (
+	PrivateKey, error) {
 	if len(pem_block) == 0 {
 		return nil, errors.New("empty pem block")
 	}
@@ -256,6 +257,7 @@ func LoadPrivateKeyFromPEMWidthPassword(pem_block []byte, password string) (Priv
 	}
 	defer C.BIO_free(bio)
 	cs := C.CString(password)
+	defer C.free(unsafe.Pointer(cs))
 	rsakey := C.PEM_read_bio_RSAPrivateKey(bio, nil, nil, unsafe.Pointer(cs))
 	if rsakey == nil {
 		return nil, errors.New("failed reading rsa key")

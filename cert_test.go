@@ -107,7 +107,7 @@ func TestCertGetNameEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	info := &CertificateInfo{
-		Serial:       1,
+		Serial:       big.NewInt(int64(1)),
 		Issued:       0,
 		Expires:      24 * time.Hour,
 		Country:      "US",
