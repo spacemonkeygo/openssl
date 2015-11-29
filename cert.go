@@ -27,6 +27,7 @@ import "C"
 import (
 	"errors"
 	"io/ioutil"
+	"math/big"
 	"runtime"
 	"time"
 	"unsafe"
@@ -57,7 +58,7 @@ type Certificate struct {
 }
 
 type CertificateInfo struct {
-	Serial       int
+	Serial       *big.Int
 	Issued       time.Duration
 	Expires      time.Duration
 	Country      string
@@ -206,8 +207,20 @@ func (c *Certificate) SetIssuerName(name *Name) error {
 }
 
 // SetSerial sets the serial of a certificate.
-func (c *Certificate) SetSerial(serial int) error {
-	if C.ASN1_INTEGER_set(C.X509_get_serialNumber(c.x), C.long(serial)) != 1 {
+func (c *Certificate) SetSerial(serial *big.Int) error {
+	sno := C.ASN1_INTEGER_new()
+	defer C.ASN1_INTEGER_free(sno)
+	bn := C.BN_new()
+	defer C.BN_free(bn)
+
+	serialBytes := serial.Bytes()
+	if bn = C.BN_bin2bn((*C.uchar)(unsafe.Pointer(&serialBytes[0])), C.int(len(serialBytes)), bn); bn == nil {
+		return errors.New("failed to set serial")
+	}
+	if sno = C.BN_to_ASN1_INTEGER(bn, sno); sno == nil {
+		return errors.New("failed to set serial")
+	}
+	if C.X509_set_serialNumber(c.x, sno) != 1 {
 		return errors.New("failed to set serial")
 	}
 	return nil
