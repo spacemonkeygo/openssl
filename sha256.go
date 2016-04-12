@@ -23,6 +23,12 @@ package openssl
 #include <unistd.h>
 
 #include "openssl/evp.h"
+
+// Cast d to uintptr to avoid costly cgoCheckPointer checks.
+int _avoid_cgoCheckPointer_EVP_DigestUpdate(EVP_MD_CTX *ctx, uintptr_t d, size_t cnt) {
+    return EVP_DigestUpdate(ctx, (const void *) d, cnt);
+}
+
 */
 import "C"
 
@@ -64,7 +70,8 @@ func (s *SHA256Hash) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
-	if 1 != C.EVP_DigestUpdate(&s.ctx, unsafe.Pointer(&p[0]),
+	if 1 != C._avoid_cgoCheckPointer_EVP_DigestUpdate(&s.ctx,
+		C.uintptr_t(uintptr(unsafe.Pointer(&p[0]))),
 		C.size_t(len(p))) {
 		return 0, errors.New("openssl: sha256: cannot update digest")
 	}
