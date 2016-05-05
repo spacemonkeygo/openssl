@@ -191,6 +191,8 @@ func ClosingTest(t testing.TB, constructor func(
 
 	run_test := func(close_tcp bool, server_writes bool) {
 		server_conn, client_conn := NetPipe(t)
+		server_conn.SetDeadline(time.Now().Add(2 * time.Second))
+		client_conn.SetDeadline(time.Now().Add(2 * time.Second))
 		defer server_conn.Close()
 		defer client_conn.Close()
 		server, client := constructor(t, server_conn, client_conn)
