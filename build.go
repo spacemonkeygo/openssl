@@ -20,5 +20,5 @@ package openssl
 // #cgo windows CFLAGS: -DWIN32_LEAN_AND_MEAN
 // #cgo darwin CFLAGS: -Wno-deprecated-declarations
 // #cgo brew CFLAGS: -I/usr/local/opt/openssl/include/
-// #cgo brew LDFLAGS: /usr/local/opt/openssl/lib/libcrypto.a
+// #cgo brew LDFLAGS: -L/usr/local/opt/openssl/lib -lcrypto
 import "C"
