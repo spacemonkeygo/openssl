@@ -147,3 +147,20 @@ func TestGenerate(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSign(t *testing.T) {
+	key, _ := GenerateRSAKey(1024)
+	data := []byte("the quick brown fox jumps over the lazy dog")
+	_, err := key.SignPKCS1v15(SHA1_Method, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = key.SignPKCS1v15(SHA256_Method, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = key.SignPKCS1v15(SHA512_Method, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
