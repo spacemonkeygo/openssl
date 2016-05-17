@@ -53,7 +53,9 @@ import (
 type Method *C.EVP_MD
 
 var (
+	SHA1_Method   Method = C.EVP_sha1()
 	SHA256_Method Method = C.EVP_sha256()
+	SHA512_Method Method = C.EVP_sha512()
 )
 
 type PublicKey interface {
