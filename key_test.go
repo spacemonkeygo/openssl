@@ -35,6 +35,12 @@ func TestMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	privateBlock, _ := pem_pkg.Decode(keyBytes)
+	key, err = LoadPrivateKeyFromDER(privateBlock.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	pem, err := cert.MarshalPEM()
 	if err != nil {
 		t.Fatal(err)
