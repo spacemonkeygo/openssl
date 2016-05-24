@@ -37,6 +37,21 @@ func TestCertGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	v := cert.GetVersion()
+	if v != X509_V1 {
+		t.Fatal("Version should be X509_V1.")
+	}
+
+	if err := cert.SetVersion(X509_V3); err != nil {
+		t.Fatal(err)
+	}
+
+	v = cert.GetVersion()
+	if v != X509_V3 {
+		t.Fatal("Version should be X509_V3.")
+	}
+
 	if err := cert.Sign(key, EVP_SHA256); err != nil {
 		t.Fatal(err)
 	}

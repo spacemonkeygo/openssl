@@ -16,12 +16,19 @@
 
 package openssl
 
-// #include <openssl/conf.h>
-// #include <openssl/ssl.h>
-// #include <openssl/x509v3.h>
-//
-// void OPENSSL_free_not_a_macro(void *ref) { OPENSSL_free(ref); }
-//
+/*
+#include <openssl/conf.h>
+#include <openssl/ssl.h>
+#include <openssl/x509v3.h>
+
+void OPENSSL_free_not_a_macro(void *ref) { OPENSSL_free(ref); }
+long X509_get_version_not_a_macro(X509 *x) {
+	return X509_get_version(x);
+}
+int X509_set_version_not_a_macro(X509 *x, long version) {
+	return X509_set_version(x, version);
+}
+*/
 import "C"
 
 import (
@@ -50,11 +57,19 @@ const (
 	EVP_SHA512    EVP_MD = iota
 )
 
+// Specify constants for x509 versions because the standard states that they
+// are represented internally as one lower than the common version name.
+const (
+	X509_V1 = 0
+	X509_V3 = 2
+)
+
 type Certificate struct {
-	x      *C.X509
-	Issuer *Certificate
-	ref    interface{}
-	pubKey PublicKey
+	x       *C.X509
+	version C.long
+	Issuer  *Certificate
+	ref     interface{}
+	pubKey  PublicKey
 }
 
 type CertificateInfo struct {
@@ -175,6 +190,14 @@ func (c *Certificate) GetIssuerName() (*Name, error) {
 	return &Name{name: n}, nil
 }
 
+// GetVersion returns the x509 version.
+// Note: this is defined by standards (X.509 et al) to be one less than the
+// certificate version. So a verson 3 certificate will return 2 and a
+// version 1 certificate will return 0.
+func (c *Certificate) GetVersion() C.long {
+	return C.X509_get_version_not_a_macro(c.x)
+}
+
 func (c *Certificate) SetSubjectName(name *Name) error {
 	if C.X509_set_subject_name(c.x, name.name) != 1 {
 		return errors.New("failed to set subject name")
@@ -251,6 +274,17 @@ func (c *Certificate) SetPubKey(pubKey PublicKey) error {
 	c.pubKey = pubKey
 	if C.X509_set_pubkey(c.x, pubKey.evpPKey()) != 1 {
 		return errors.New("failed to set public key")
+	}
+	return nil
+}
+
+// SetVersion assigns a certificate standard version to the CertificateInfo
+// It is recommended to use the constants X509_V1 and X509_V3, as the internal
+// representation differs due to peculiarities of the standard.
+func (c *Certificate) SetVersion(v int32) error {
+	c.version = C.long(v)
+	if C.X509_set_version_not_a_macro(c.x, c.version) != 1 {
+		return errors.New("failed to set certificate version")
 	}
 	return nil
 }
