@@ -246,8 +246,8 @@ func LoadPrivateKeyFromPEM(pem_block []byte) (PrivateKey, error) {
 	return p, nil
 }
 
-// LoadPrivateKeyFromPEM loads a private key from a PEM-encoded block.
-func LoadPrivateKeyFromPEMWidthPassword(pem_block []byte, password string) (
+// LoadPrivateKeyFromPEMWithPassword loads a private key from a PEM-encoded block.
+func LoadPrivateKeyFromPEMWithPassword(pem_block []byte, password string) (
 	PrivateKey, error) {
 	if len(pem_block) == 0 {
 		return nil, errors.New("empty pem block")
@@ -316,6 +316,13 @@ func LoadPrivateKeyFromDER(der_block []byte) (PrivateKey, error) {
 		C.EVP_PKEY_free(p.key)
 	})
 	return p, nil
+}
+
+// LoadPrivateKeyFromPEMWidthPassword loads a private key from a PEM-encoded block.
+// Backwards-compatible with typo
+func LoadPrivateKeyFromPEMWidthPassword(pem_block []byte, password string) (
+	PrivateKey, error) {
+	return LoadPrivateKeyFromPEMWithPassword(pem_block, password)
 }
 
 // LoadPublicKeyFromPEM loads a public key from a PEM-encoded block.
