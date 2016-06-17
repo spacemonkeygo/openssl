@@ -353,7 +353,11 @@ func LoadPublicKeyFromDER(der_block []byte) (PublicKey, error) {
 
 // GenerateRSAKey generates a new RSA private key with an exponent of 3.
 func GenerateRSAKey(bits int) (PrivateKey, error) {
-	exponent := 3
+	return GenerateRSAKeyWithExponent(bits, 3)
+}
+
+// GenerateRSAKeyWithExponent generates a new RSA private key.
+func GenerateRSAKeyWithExponent(bits int, exponent int) (PrivateKey, error) {
 	rsa := C.RSA_generate_key(C.int(bits), C.ulong(exponent), nil, nil)
 	if rsa == nil {
 		return nil, errors.New("failed to generate RSA key")
