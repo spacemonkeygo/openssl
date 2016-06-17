@@ -152,6 +152,10 @@ func TestGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = GenerateRSAKeyWithExponent(1024, 65537)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestSign(t *testing.T) {
