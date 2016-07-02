@@ -168,7 +168,7 @@ func isPKCS12Equals(actual, expect *PKCS12) (bool, string) {
 	if len(actual.CaCerts) != len(expect.CaCerts) {
 		return false, fmt.Sprint("PKCS12 ca certificas mismatch. Expect length:", len(expect.CaCerts), "Actual length:", len(actual.CaCerts))
 	}
-	// TODO More validation should be implementation
+	// TODO More validations should be implemented
 	// Good
 	return true, ""
 }
