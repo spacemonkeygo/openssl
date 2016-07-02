@@ -26,26 +26,26 @@ package openssl
 // typedef STACK_OF(X509) OPENSSL_STACK_OF_X509;
 //
 // OPENSSL_STACK_OF_X509* sk_X509_new_null_wrap() {
-//      return sk_X509_new_null();
+// 	return sk_X509_new_null();
 // }
 //
 // int sk_X509_push_wrap(OPENSSL_STACK_OF_X509 *sk, X509 *x509) {
-//      return sk_X509_push(sk, x509);
+// 	return sk_X509_push(sk, x509);
 // }
 //
 // void sk_X509_free_wrap(OPENSSL_STACK_OF_X509 *sk) {
-//      return sk_X509_free(sk);
+// 	return sk_X509_free(sk);
 // }
 //
 // int sk_X509_num_wrap(OPENSSL_STACK_OF_X509 *sk) {
-//		return sk_X509_num(sk);
+// 	return sk_X509_num(sk);
 // }
 //
 // X509 *sk_X509_value_wrap(OPENSSL_STACK_OF_X509 *sk, int i) {
-// 		return sk_X509_value(sk, i);
+// 	return sk_X509_value(sk, i);
 // }
 // int BIO_flush_wrap(BIO *b) {
-// 		return BIO_flush(b);
+// 	return BIO_flush(b);
 // }
 //
 import "C"
@@ -143,8 +143,6 @@ func UnmarshalPKCS12(bytes []byte, password string) (*PKCS12, error) {
 	if len(bytes) == 0 {
 		return nil, errors.New("Empty pkcs12 bytes")
 	}
-	//runtime.LockOSThread()
-	//defer runtime.UnlockOSThread()
 	bio := C.BIO_new_mem_buf(unsafe.Pointer(&bytes[0]), C.int(len(bytes)))
 	if bio == nil {
 		return nil, errors.New("Failed to create memory BIO")
