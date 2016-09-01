@@ -18,6 +18,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+### Using on macOS
+1. Install [homebrew](http://brew.sh/)
+2. `$ brew install openssl`
+3. `$ export PKG_CONFIG_PATH="$(brew --prefix openssl)/lib/pkgconfig"`
+
 ### Using on Windows
 1. Install [mingw-w64](http://mingw-w64.sourceforge.net/)
 2. Install [pkg-config-lite](http://sourceforge.net/projects/pkgconfiglite)
