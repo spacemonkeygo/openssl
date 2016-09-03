@@ -664,6 +664,9 @@ func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl Conn, ad int, arg unsafe.P
 	arg unsafe.Pointer) int {
 	c.servername_cb = cb
 	ted := C.new_TlsServernameData()
+	if ted == nil {
+		return 1
+	}
 	ted.go_ctx = unsafe.Pointer(c)
 	ted.ctx = c.ctx
 	ted.arg = arg
