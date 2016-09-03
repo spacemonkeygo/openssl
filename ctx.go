@@ -80,6 +80,16 @@ typedef struct TlsServernameData {
     void *arg;
 } TlsServernameData;
 
+static TlsServernameData* new_TlsServernameData() {
+    return malloc(sizeof(TlsServernameData));
+}
+
+//UNUSED: openssl doesn't have a way to unset SNI callback or arg. So we just leak whatever
+//the function above allocates
+//static void del_TlsServernameData(TlsServernameData *tsd) {
+//  free(tds);
+//}
+
 extern int callServerNameCb(SSL* ssl, int ad, void* arg);
 
 static int call_go_servername(SSL* ssl, int ad, void* arg) {
@@ -147,7 +157,7 @@ type Ctx struct {
 	key           PrivateKey
 	verify_cb     VerifyCallback
 	servername_cb ServerNameCallback
-	ted           C.TlsServernameData
+	ted           *C.TlsServernameData
 }
 
 //export get_ssl_ctx_idx
@@ -653,10 +663,10 @@ func callServerNameCb(ssl *C.SSL, ad C.int, arg unsafe.Pointer) C.int {
 func (c *Ctx) SetTlsExtServerNameCallback(cb func(ssl Conn, ad int, arg unsafe.Pointer) int,
 	arg unsafe.Pointer) int {
 	c.servername_cb = cb
-	c.ted = C.TlsServernameData{
-		go_ctx: unsafe.Pointer(c),
-		ctx:    c.ctx,
-		arg:    arg,
-	}
-	return int(C.servername_gateway(&c.ted))
+	ted := C.new_TlsServernameData()
+	ted.go_ctx = unsafe.Pointer(c)
+	ted.ctx = c.ctx
+	ted.arg = arg
+	c.ted = ted
+	return int(C.servername_gateway(c.ted))
 }
