@@ -81,7 +81,7 @@ typedef struct TlsServernameData {
 } TlsServernameData;
 
 static TlsServernameData* new_TlsServernameData() {
-    return malloc(sizeof(TlsServernameData));
+    return calloc(1, sizeof(TlsServernameData));
 }
 
 //UNUSED: openssl doesn't have a way to unset SNI callback or arg. So we just leak whatever
