@@ -59,8 +59,9 @@ var (
 )
 
 type Conn struct {
+	*SSL
+
 	conn             net.Conn
-	ssl              *C.SSL
 	ctx              *Ctx // for gc
 	into_ssl         *readBio
 	from_ssl         *writeBio
@@ -156,9 +157,13 @@ func newConn(conn net.Conn, ctx *Ctx) (*Conn, error) {
 	// the ssl object takes ownership of these objects now
 	C.SSL_set_bio(ssl, into_ssl_cbio, from_ssl_cbio)
 
+	s := &SSL{ssl: ssl}
+	C.SSL_set_ex_data(s.ssl, get_ssl_idx(), unsafe.Pointer(s))
+
 	c := &Conn{
+		SSL: s,
+
 		conn:     conn,
-		ssl:      ssl,
 		ctx:      ctx,
 		into_ssl: into_ssl,
 		from_ssl: from_ssl}
@@ -202,6 +207,8 @@ func Server(conn net.Conn, ctx *Ctx) (*Conn, error) {
 	C.SSL_set_accept_state(c.ssl)
 	return c, nil
 }
+
+func (c *Conn) GetCtx() *Ctx { return c.ctx }
 
 func (c *Conn) CurrentCipher() (string, error) {
 	p := C.SSL_get_cipher_name_not_a_macro(c.ssl)
@@ -344,6 +351,22 @@ func (c *Conn) PeerCertificate() (*Certificate, error) {
 	return cert, nil
 }
 
+// loadCertificateStack loads up a stack of x509 certificates and returns them,
+// handling memory ownership.
+func (c *Conn) loadCertificateStack(sk *C.struct_stack_st_X509) (
+	rv []*Certificate) {
+
+	sk_num := int(C.sk_X509_num_not_a_macro(sk))
+	rv = make([]*Certificate, 0, sk_num)
+	for i := 0; i < sk_num; i++ {
+		x := C.sk_X509_value_not_a_macro(sk, C.int(i))
+		// ref holds on to the underlying connection memory so we don't need to
+		// worry about incrementing refcounts manually or freeing the X509
+		rv = append(rv, &Certificate{x: x, ref: c})
+	}
+	return rv
+}
+
 // PeerCertificateChain returns the certificate chain of the peer. If called on
 // the client side, the stack also contains the peer's certificate; if called
 // on the server side, the peer's certificate must be obtained separately using
@@ -358,15 +381,7 @@ func (c *Conn) PeerCertificateChain() (rv []*Certificate, err error) {
 	if sk == nil {
 		return nil, errors.New("no peer certificates found")
 	}
-	sk_num := int(C.sk_X509_num_not_a_macro(sk))
-	rv = make([]*Certificate, 0, sk_num)
-	for i := 0; i < sk_num; i++ {
-		x := C.sk_X509_value_not_a_macro(sk, C.int(i))
-		// ref holds on to the underlying connection memory so we don't need to
-		// worry about incrementing refcounts manually or freeing the X509
-		rv = append(rv, &Certificate{x: x, ref: c})
-	}
-	return rv, nil
+	return c.loadCertificateStack(sk), nil
 }
 
 type ConnectionState struct {

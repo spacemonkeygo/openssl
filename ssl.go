@@ -131,7 +131,7 @@ func (s *SSL) SetVerifyMode(options VerifyOptions) {
 // SetVerifyCallback controls peer verification setting. See
 // http://www.openssl.org/docs/ssl/SSL_CTX_set_verify.html
 func (s *SSL) SetVerifyCallback(verify_cb VerifyCallback) {
-	s.SetVerify(s.VerifyMode(), s.verify_cb)
+	s.SetVerify(s.VerifyMode(), verify_cb)
 }
 
 // GetVerifyCallback returns callback function. See
