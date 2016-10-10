@@ -349,7 +349,7 @@ static int do_x509_check(X509 *x, const unsigned char *chk, size_t chklen,
 #if OPENSSL_VERSION_NUMBER < 0x1000200fL
 
 int X509_check_host(X509 *x, const unsigned char *chk, size_t chklen,
-					unsigned int flags)
+					unsigned int flags, char **peername)
 	{
 	return do_x509_check(x, chk, chklen, flags, GEN_DNS);
 	}

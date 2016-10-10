@@ -26,7 +26,7 @@ package openssl
 #define X509_CHECK_FLAG_NO_WILDCARDS	0x2
 
 extern int X509_check_host(X509 *x, const unsigned char *chk, size_t chklen,
-    unsigned int flags);
+    unsigned int flags, char **peername);
 extern int X509_check_email(X509 *x, const unsigned char *chk, size_t chklen,
     unsigned int flags);
 extern int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
@@ -60,8 +60,9 @@ const (
 func (c *Certificate) CheckHost(host string, flags CheckFlags) error {
 	chost := unsafe.Pointer(C.CString(host))
 	defer C.free(chost)
+
 	rv := C.X509_check_host(c.x, (*C.uchar)(chost), C.size_t(len(host)),
-		C.uint(flags))
+		C.uint(flags), nil)
 	if rv > 0 {
 		return nil
 	}
