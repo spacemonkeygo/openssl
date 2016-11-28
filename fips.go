@@ -1,5 +1,5 @@
 // +build cgo
-// +build -darwin
+// +build !darwin
 
 package openssl
 
@@ -8,6 +8,8 @@ package openssl
 */
 import "C"
 
+// FIPSModeSet enables a FIPS 140-2 validated mode of operation.
+// https://wiki.openssl.org/index.php/FIPS_mode_set()
 func FIPSModeSet(mode bool) error {
 	var r C.int
 	if mode {
