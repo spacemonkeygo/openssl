@@ -230,6 +230,19 @@ func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
 	return ioutil.ReadAll(asAnyBio(bio))
 }
 
+func LoadPrivateKeyFromEngine(e *Engine, key_id []byte) (PrivateKey, error) {
+	key := C.ENGINE_load_private_key(e.e, (*C.char)(unsafe.Pointer(&key_id[0])), nil, nil)
+	if key == nil {
+		return nil, errors.New("Could not load private key from engine")
+	}
+
+	p := &pKey{key: key}
+	runtime.SetFinalizer(p, func(p *pKey) {
+		C.EVP_PKEY_free(p.key)
+	})
+	return p, nil
+}
+
 // LoadPrivateKeyFromPEM loads a private key from a PEM-encoded block.
 func LoadPrivateKeyFromPEM(pem_block []byte) (PrivateKey, error) {
 	if len(pem_block) == 0 {
