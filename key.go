@@ -19,6 +19,8 @@ package openssl
 // #include <openssl/evp.h>
 // #include <openssl/ssl.h>
 // #include <openssl/conf.h>
+// #include <openssl/engine.h>
+// #include <openssl/rsa.h>
 //
 // int EVP_SignInit_not_a_macro(EVP_MD_CTX *ctx, const EVP_MD *type) {
 //     return EVP_SignInit(ctx, type);
@@ -86,6 +88,9 @@ type PrivateKey interface {
 	// MarshalPKCS1PrivateKeyDER converts the private key to DER-encoded PKCS1
 	// format
 	MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
+
+	// GetModulus returns private key modulus
+	GetModulus() (modulus []byte, err error)
 }
 
 type pKey struct {
@@ -191,6 +196,20 @@ func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
 		return nil, errors.New("failed dumping public key pem")
 	}
 	return ioutil.ReadAll(asAnyBio(bio))
+}
+
+func (key *pKey) GetModulus() ([]byte, error) {
+	rsa := (*C.RSA)(C.EVP_PKEY_get1_RSA(key.key))
+	if rsa == nil {
+		return nil, errors.New("failed getting rsa key")
+	}
+	defer C.RSA_free(rsa)
+
+	m := C.BN_bn2hex(rsa.n)
+	if m == nil {
+		return nil, errors.New("failed to find RSA key modulus")
+	}
+	return ([]byte)(C.GoString(m)), nil
 }
 
 func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
