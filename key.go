@@ -21,6 +21,7 @@ package openssl
 // #include <openssl/conf.h>
 // #include <openssl/engine.h>
 // #include <openssl/rsa.h>
+// #include <openssl/crypto.h>
 //
 // int EVP_SignInit_not_a_macro(EVP_MD_CTX *ctx, const EVP_MD *type) {
 //     return EVP_SignInit(ctx, type);
@@ -209,6 +210,8 @@ func (key *pKey) GetModulus() ([]byte, error) {
 	if m == nil {
 		return nil, errors.New("failed to find RSA key modulus")
 	}
+	defer C.CRYPTO_free(unsafe.Pointer(m))
+
 	return ([]byte)(C.GoString(m)), nil
 }
 
