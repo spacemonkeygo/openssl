@@ -233,6 +233,7 @@ func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
 	return ioutil.ReadAll(asAnyBio(bio))
 }
 
+// LoadPrivateKeyFromEngine loads a provate key from an OpenSSL ENGINE
 func LoadPrivateKeyFromEngine(e *Engine, key_id []byte) (PrivateKey, error) {
 	key := C.ENGINE_load_private_key(e.e, (*C.char)(unsafe.Pointer(&key_id[0])), nil, nil)
 	if key == nil {
