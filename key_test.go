@@ -174,3 +174,19 @@ func TestSign(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestModulus(t *testing.T) {
+	key, err := LoadPrivateKeyFromPEM(keyBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modulus, err := key.GetModulus()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(modulus, keyModulus) {
+		ioutil.WriteFile("calculated", []byte(hex.Dump(modulus)), 0644)
+		ioutil.WriteFile("hardcoded", []byte(hex.Dump(keyModulus)), 0644)
+		t.Fatal("invalid private key modulus bytes")
+	}
+}
