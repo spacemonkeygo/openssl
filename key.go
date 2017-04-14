@@ -420,3 +420,36 @@ func GenerateRSAKeyWithExponent(bits int, exponent int) (PrivateKey, error) {
 	})
 	return p, nil
 }
+
+// DeriveKey generates a key and IV from given password and salt using openssl EVP_BytesToKey()
+func DeriveKey(cipher *Cipher, digest *Digest, salt []byte, password []byte,
+	iterations int) (key, iv []byte, err error) {
+
+	if len(salt)!=0 && len(salt)!=8 {
+		return nil, nil, errors.New("salt size must be 0 or 8 bytes")
+	}
+	if iterations < 1 {
+		return nil, nil, errors.New("iterations count must be 1 or greater")
+	}
+
+	key = make([]byte, cipher.KeySize())
+	iv = make([]byte, cipher.IVSize())
+
+	var saltPtr, ivPtr, passwordPtr, keyPtr *C.uchar
+	if len(salt) != 0 {
+		saltPtr = (*C.uchar)(unsafe.Pointer(&salt[0]))
+	}
+	if len(iv) != 0 {
+		ivPtr = (*C.uchar)(unsafe.Pointer(&iv[0]))
+	}
+	passwordPtr = (*C.uchar)(unsafe.Pointer(&password[0]))
+	keyPtr = (*C.uchar)(unsafe.Pointer(&key[0]))
+
+	derivedKeySize := C.EVP_BytesToKey(cipher.ptr, digest.ptr, saltPtr,
+		passwordPtr, C.int(len(password)), C.int(iterations), keyPtr, ivPtr)
+	if derivedKeySize != C.int(cipher.KeySize()) {
+		return nil, nil, errors.New("key derivation failed")
+	}
+
+	return key, iv, nil
+}
