@@ -16,24 +16,17 @@
 
 package openssl
 
-/*
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include "openssl/evp.h"
-#include "openssl/hmac.h"
-*/
+// #include "shim.h"
 import "C"
 
 import (
+	"errors"
 	"runtime"
 	"unsafe"
 )
 
 type HMAC struct {
-	ctx    C.HMAC_CTX
+	ctx    *C.HMAC_CTX
 	engine *Engine
 	md     *C.EVP_MD
 }
@@ -44,38 +37,57 @@ func NewHMAC(key []byte, digestAlgorithm EVP_MD) (*HMAC, error) {
 
 func NewHMACWithEngine(key []byte, digestAlgorithm EVP_MD, e *Engine) (*HMAC, error) {
 	var md *C.EVP_MD = getDigestFunction(digestAlgorithm)
-	hmac := &HMAC{engine: e, md: md}
-	C.HMAC_CTX_init(&hmac.ctx)
-	C.HMAC_Init_ex(&hmac.ctx,
+	h := &HMAC{engine: e, md: md}
+	h.ctx = C.X_HMAC_CTX_new()
+	if h.ctx == nil {
+		return nil, errors.New("unable to allocate HMAC_CTX")
+	}
+
+	var c_e *C.ENGINE
+	if e != nil {
+		c_e = e.e
+	}
+	if rc := C.X_HMAC_Init_ex(h.ctx,
 		unsafe.Pointer(&key[0]),
 		C.int(len(key)),
 		md,
-		nil)
+		c_e); rc != 1 {
+		C.X_HMAC_CTX_free(h.ctx)
+		return nil, errors.New("failed to initialize HMAC_CTX")
+	}
 
-	runtime.SetFinalizer(hmac, func(hmac *HMAC) { hmac.Close() })
-	return hmac, nil
+	runtime.SetFinalizer(h, func(h *HMAC) { h.Close() })
+	return h, nil
 }
 
 func (h *HMAC) Close() {
-	C.HMAC_CTX_cleanup(&h.ctx)
+	C.X_HMAC_CTX_free(h.ctx)
 }
 
-func (s *HMAC) Write(data []byte) (n int, err error) {
+func (h *HMAC) Write(data []byte) (n int, err error) {
 	if len(data) == 0 {
 		return 0, nil
 	}
-	C.HMAC_Update(&s.ctx, (*C.uchar)(unsafe.Pointer(&data[0])), C.size_t(len(data)))
+	if rc := C.X_HMAC_Update(h.ctx, (*C.uchar)(unsafe.Pointer(&data[0])),
+		C.size_t(len(data))); rc != 1 {
+		return 0, errors.New("failed to update HMAC")
+	}
 	return len(data), nil
 }
 
 func (h *HMAC) Reset() error {
-	C.HMAC_Init_ex(&h.ctx, nil, 0, nil, nil)
+	if 1 != C.X_HMAC_Init_ex(h.ctx, nil, 0, nil, nil) {
+		return errors.New("failed to reset HMAC_CTX")
+	}
 	return nil
 }
 
 func (h *HMAC) Final() (result []byte, err error) {
-	mdLength := C.EVP_MD_size(h.md)
+	mdLength := C.X_EVP_MD_size(h.md)
 	result = make([]byte, mdLength)
-	C.HMAC_Final(&h.ctx, (*C.uchar)(unsafe.Pointer(&result[0])), (*C.uint)(unsafe.Pointer(&mdLength)))
+	if rc := C.X_HMAC_Final(h.ctx, (*C.uchar)(unsafe.Pointer(&result[0])),
+		(*C.uint)(unsafe.Pointer(&mdLength))); rc != 1 {
+		return nil, errors.New("failed to finalized HMAC")
+	}
 	return result, h.Reset()
 }

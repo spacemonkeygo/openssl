@@ -16,14 +16,7 @@
 
 package openssl
 
-/*
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include "openssl/evp.h"
-*/
+// #include "shim.h"
 import "C"
 
 import (
@@ -33,7 +26,7 @@ import (
 )
 
 type SHA1Hash struct {
-	ctx    C.EVP_MD_CTX
+	ctx    *C.EVP_MD_CTX
 	engine *Engine
 }
 
@@ -41,7 +34,10 @@ func NewSHA1Hash() (*SHA1Hash, error) { return NewSHA1HashWithEngine(nil) }
 
 func NewSHA1HashWithEngine(e *Engine) (*SHA1Hash, error) {
 	hash := &SHA1Hash{engine: e}
-	C.EVP_MD_CTX_init(&hash.ctx)
+	hash.ctx = C.X_EVP_MD_CTX_new()
+	if hash.ctx == nil {
+		return nil, errors.New("openssl: sha1: unable to allocate ctx")
+	}
 	runtime.SetFinalizer(hash, func(hash *SHA1Hash) { hash.Close() })
 	if err := hash.Reset(); err != nil {
 		return nil, err
@@ -50,7 +46,10 @@ func NewSHA1HashWithEngine(e *Engine) (*SHA1Hash, error) {
 }
 
 func (s *SHA1Hash) Close() {
-	C.EVP_MD_CTX_cleanup(&s.ctx)
+	if s.ctx != nil {
+		C.X_EVP_MD_CTX_free(s.ctx)
+		s.ctx = nil
+	}
 }
 
 func engineRef(e *Engine) *C.ENGINE {
@@ -61,7 +60,7 @@ func engineRef(e *Engine) *C.ENGINE {
 }
 
 func (s *SHA1Hash) Reset() error {
-	if 1 != C.EVP_DigestInit_ex(&s.ctx, C.EVP_sha1(), engineRef(s.engine)) {
+	if 1 != C.X_EVP_DigestInit_ex(s.ctx, C.X_EVP_sha1(), engineRef(s.engine)) {
 		return errors.New("openssl: sha1: cannot init digest ctx")
 	}
 	return nil
@@ -71,7 +70,7 @@ func (s *SHA1Hash) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
-	if 1 != C.EVP_DigestUpdate(&s.ctx, unsafe.Pointer(&p[0]),
+	if 1 != C.X_EVP_DigestUpdate(s.ctx, unsafe.Pointer(&p[0]),
 		C.size_t(len(p))) {
 		return 0, errors.New("openssl: sha1: cannot update digest")
 	}
@@ -79,7 +78,7 @@ func (s *SHA1Hash) Write(p []byte) (n int, err error) {
 }
 
 func (s *SHA1Hash) Sum() (result [20]byte, err error) {
-	if 1 != C.EVP_DigestFinal_ex(&s.ctx,
+	if 1 != C.X_EVP_DigestFinal_ex(s.ctx,
 		(*C.uchar)(unsafe.Pointer(&result[0])), nil) {
 		return result, errors.New("openssl: sha1: cannot finalize ctx")
 	}

@@ -29,7 +29,7 @@ package openssl
 
 CRITICAL_SECTION* goopenssl_locks;
 
-int Goopenssl_init_locks() {
+int go_init_locks() {
 	int rc = 0;
 	int nlock;
 	int i;
@@ -47,7 +47,7 @@ int Goopenssl_init_locks() {
 	return 0;
 }
 
-void Goopenssl_thread_locking_callback(int mode, int n, const char *file,
+void go_thread_locking_callback(int mode, int n, const char *file,
 	int line) {
 	if (mode & CRYPTO_LOCK) {
 		EnterCriticalSection(&goopenssl_locks[n]);
