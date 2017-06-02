@@ -16,7 +16,7 @@
 
 package openssl
 
-// #include <openssl/evp.h>
+// #include "shim.h"
 import "C"
 
 import (
@@ -34,7 +34,7 @@ type Digest struct {
 func GetDigestByName(name string) (*Digest, error) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
-	p := C.EVP_get_digestbyname(cname)
+	p := C.X_EVP_get_digestbyname(cname)
 	if p == nil {
 		return nil, fmt.Errorf("Digest %v not found", name)
 	}

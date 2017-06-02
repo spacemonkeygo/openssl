@@ -16,12 +16,7 @@
 
 package openssl
 
-// #include <openssl/conf.h>
-// #include <openssl/ssl.h>
-// #include <openssl/x509v3.h>
-//
-// void OPENSSL_free_not_a_macro(void *ref) { OPENSSL_free(ref); }
-//
+// #include "shim.h"
 import "C"
 
 import (
@@ -229,7 +224,7 @@ func (c *Certificate) SetSerial(serial *big.Int) error {
 // SetIssueDate sets the certificate issue date relative to the current time.
 func (c *Certificate) SetIssueDate(when time.Duration) error {
 	offset := C.long(when / time.Second)
-	result := C.X509_gmtime_adj(c.x.cert_info.validity.notBefore, offset)
+	result := C.X509_gmtime_adj(C.X_X509_get0_notBefore(c.x), offset)
 	if result == nil {
 		return errors.New("failed to set issue date")
 	}
@@ -239,7 +234,7 @@ func (c *Certificate) SetIssueDate(when time.Duration) error {
 // SetExpireDate sets the certificate issue date relative to the current time.
 func (c *Certificate) SetExpireDate(when time.Duration) error {
 	offset := C.long(when / time.Second)
-	result := C.X509_gmtime_adj(c.x.cert_info.validity.notAfter, offset)
+	result := C.X509_gmtime_adj(C.X_X509_get0_notAfter(c.x), offset)
 	if result == nil {
 		return errors.New("failed to set expire date")
 	}
@@ -281,30 +276,30 @@ func getDigestFunction(digest EVP_MD) (md *C.EVP_MD) {
 	switch digest {
 	// please don't use these digest functions
 	case EVP_NULL:
-		md = C.EVP_md_null()
+		md = C.X_EVP_md_null()
 	case EVP_MD5:
-		md = C.EVP_md5()
+		md = C.X_EVP_md5()
 	case EVP_SHA:
-		md = C.EVP_sha()
+		md = C.X_EVP_sha()
 	case EVP_SHA1:
-		md = C.EVP_sha1()
+		md = C.X_EVP_sha1()
 	case EVP_DSS:
-		md = C.EVP_dss()
+		md = C.X_EVP_dss()
 	case EVP_DSS1:
-		md = C.EVP_dss1()
+		md = C.X_EVP_dss1()
 	case EVP_RIPEMD160:
-		md = C.EVP_ripemd160()
+		md = C.X_EVP_ripemd160()
 	case EVP_SHA224:
-		md = C.EVP_sha224()
+		md = C.X_EVP_sha224()
 	// you actually want one of these
 	case EVP_SHA256:
-		md = C.EVP_sha256()
+		md = C.X_EVP_sha256()
 	case EVP_SHA384:
-		md = C.EVP_sha384()
+		md = C.X_EVP_sha384()
 	case EVP_SHA512:
-		md = C.EVP_sha512()
+		md = C.X_EVP_sha512()
 	}
-	return
+	return md
 }
 
 // Add an extension to a certificate.
@@ -392,6 +387,6 @@ func (c *Certificate) GetSerialNumberHex() (serial string) {
 	hex := C.BN_bn2hex(bignum)
 	serial = C.GoString(hex)
 	C.BN_free(bignum)
-	C.OPENSSL_free_not_a_macro(unsafe.Pointer(hex))
+	C.X_OPENSSL_free(unsafe.Pointer(hex))
 	return
 }

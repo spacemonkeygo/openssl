@@ -2,20 +2,7 @@
 
 package openssl
 
-/*
-#include <openssl/crypto.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/conf.h>
-#include <openssl/dh.h>
-
-static long SSL_CTX_set_tmp_dh_not_a_macro(SSL_CTX* ctx, DH *dh) {
-    return SSL_CTX_set_tmp_dh(ctx, dh);
-}
-static long PEM_read_DHparams_not_a_macro(SSL_CTX* ctx, DH *dh) {
-    return SSL_CTX_set_tmp_dh(ctx, dh);
-}
-*/
+// #include "shim.h"
 import "C"
 
 import (
@@ -58,7 +45,7 @@ func (c *Ctx) SetDHParameters(dh *DH) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	if int(C.SSL_CTX_set_tmp_dh_not_a_macro(c.ctx, dh.dh)) != 1 {
+	if int(C.X_SSL_CTX_set_tmp_dh(c.ctx, dh.dh)) != 1 {
 		return errorFromErrorQueue()
 	}
 	return nil

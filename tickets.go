@@ -16,22 +16,7 @@
 
 package openssl
 
-/*
-#include <openssl/ssl.h>
-#include <openssl/evp.h>
-
-static int SSL_CTX_set_tlsext_ticket_key_cb_not_a_macro(SSL_CTX *sslctx,
-        int (*cb)(SSL *s, unsigned char key_name[16],
-                  unsigned char iv[EVP_MAX_IV_LENGTH],
-                  EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc)) {
-
-    return SSL_CTX_set_tlsext_ticket_key_cb(sslctx, cb);
-}
-
-extern int ticket_key_cb(SSL *s, unsigned char key_name[16],
-        unsigned char iv[EVP_MAX_IV_LENGTH],
-        EVP_CIPHER_CTX *cctx, HMAC_CTX *hctx, int enc);
-*/
+// #include "shim.h"
 import "C"
 
 import (
@@ -131,8 +116,8 @@ const (
 	ticket_req_lookupSession = 0
 )
 
-//export ticket_key_cb_thunk
-func ticket_key_cb_thunk(p unsafe.Pointer, s *C.SSL, key_name *C.uchar,
+//export go_ticket_key_cb_thunk
+func go_ticket_key_cb_thunk(p unsafe.Pointer, s *C.SSL, key_name *C.uchar,
 	iv *C.uchar, cctx *C.EVP_CIPHER_CTX, hctx *C.HMAC_CTX, enc C.int) C.int {
 
 	// no panic's allowed. it's super hard to guarantee any state at this point
@@ -231,9 +216,9 @@ func (c *Ctx) SetTicketStore(store *TicketStore) {
 	c.ticket_store = store
 
 	if store == nil {
-		C.SSL_CTX_set_tlsext_ticket_key_cb_not_a_macro(c.ctx, nil)
+		C.X_SSL_CTX_set_tlsext_ticket_key_cb(c.ctx, nil)
 	} else {
-		C.SSL_CTX_set_tlsext_ticket_key_cb_not_a_macro(c.ctx,
-			(*[0]byte)(C.ticket_key_cb))
+		C.X_SSL_CTX_set_tlsext_ticket_key_cb(c.ctx,
+			(*[0]byte)(C.X_SSL_CTX_ticket_key_cb))
 	}
 }
