@@ -1,7 +1,8 @@
-/* Go-OpenSSL notice:
-   This file is required for all OpenSSL versions prior to 1.1.0. This simply
-   provides the new 1.1.0 X509_check_* methods for hostname validation if they
-   don't already exist.
+/*
+ * Go-OpenSSL notice:
+ * This file is required for all OpenSSL versions prior to 1.1.0. This simply
+ * provides the new 1.1.0 X509_check_* methods for hostname validation if they
+ * don't already exist.
  */
 
 #include <openssl/x509.h>
