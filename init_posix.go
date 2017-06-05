@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build linux darwin cgo
+// +build linux darwin
 // +build !windows
 
 package openssl
