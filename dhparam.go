@@ -1,5 +1,3 @@
-// +build cgo
-
 package openssl
 
 // #include "shim.h"
