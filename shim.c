@@ -15,14 +15,6 @@
  *
  */
 
-#ifndef SSL_MODE_RELEASE_BUFFERS
-#define SSL_MODE_RELEASE_BUFFERS 0
-#endif
-
-#ifndef SSL_OP_NO_COMPRESSION
-#define SSL_OP_NO_COMPRESSION 0
-#endif
-
 #include <string.h>
 
 #include <openssl/conf.h>

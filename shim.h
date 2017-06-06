@@ -28,6 +28,14 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
+#ifndef SSL_MODE_RELEASE_BUFFERS
+#define SSL_MODE_RELEASE_BUFFERS 0
+#endif
+
+#ifndef SSL_OP_NO_COMPRESSION
+#define SSL_OP_NO_COMPRESSION 0
+#endif
+
 /* shim  methods */
 extern int X_shim_init();
 
