@@ -17,12 +17,6 @@
 package openssl
 
 /*
-
-#cgo pkg-config: libssl
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
 #include <errno.h>
 #include <openssl/crypto.h>
 #include <windows.h>
