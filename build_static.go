@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !openssl_static
+// +build openssl_static
 
 package openssl
 
-// #cgo pkg-config: libssl libcrypto
+// #cgo pkg-config: --static libssl libcrypto
 // #cgo linux CFLAGS: -Wno-deprecated-declarations
 // #cgo darwin CFLAGS: -I/usr/local/opt/openssl@1.1/include -I/usr/local/opt/openssl/include -Wno-deprecated-declarations
 // #cgo darwin LDFLAGS: -w -L/usr/local/opt/openssl@1.1/lib -L/usr/local/opt/openssl/lib
