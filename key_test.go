@@ -158,6 +158,21 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
+func TestGenerateEC(t *testing.T) {
+	key, err := GenerateECKey(Prime256v1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = key.MarshalPKIXPublicKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = key.MarshalPKCS1PrivateKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSign(t *testing.T) {
 	key, _ := GenerateRSAKey(1024)
 	data := []byte("the quick brown fox jumps over the lazy dog")

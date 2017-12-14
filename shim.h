@@ -27,6 +27,7 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
+#include <openssl/ec.h>
 
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
@@ -139,6 +140,7 @@ extern int X_EVP_CIPHER_CTX_key_length(EVP_CIPHER_CTX *ctx);
 extern int X_EVP_CIPHER_CTX_iv_length(EVP_CIPHER_CTX *ctx);
 extern const EVP_CIPHER *X_EVP_CIPHER_CTX_cipher(EVP_CIPHER_CTX *ctx);
 extern int X_EVP_CIPHER_CTX_encrypting(const EVP_CIPHER_CTX *ctx);
+extern int X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid);
 
 /* HMAC methods */
 extern size_t X_HMAC_size(const HMAC_CTX *e);

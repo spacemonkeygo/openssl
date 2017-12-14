@@ -634,6 +634,10 @@ const EVP_CIPHER *X_EVP_CIPHER_CTX_cipher(EVP_CIPHER_CTX *ctx) {
     return EVP_CIPHER_CTX_cipher(ctx);
 }
 
+int X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid) {
+	return EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, nid);
+}
+
 size_t X_HMAC_size(const HMAC_CTX *e) {
 	return HMAC_size(e);
 }
