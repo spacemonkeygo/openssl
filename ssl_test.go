@@ -81,6 +81,11 @@ ucCCa4lOGgPtXJ0Qf1c8yq5vh4yqkQjrgUTkr+CFDGR6y4CxmNDQxEMYIajaIiSY
 qmgvgyRayemfO2zR0CPgC6wSoGBth+xW6g+WA8y0z76ZSaWpFi8lVM4=
 -----END RSA PRIVATE KEY-----
 `)
+	prime256v1KeyBytes = []byte(`-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIB/XL0zZSsAu+IQF1AI/nRneabb2S126WFlvvhzmYr1KoAoGCCqGSM49
+AwEHoUQDQgAESSFGWwF6W1hoatKGPPorh4+ipyk0FqpiWdiH+4jIiU39qtOeZGSh
+1QgSbzfdHxvoYI0FXM+mqE7wec0kIvrrHw==
+-----END EC PRIVATE KEY-----`)
 )
 
 func NetPipe(t testing.TB) (net.Conn, net.Conn) {

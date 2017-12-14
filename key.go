@@ -370,3 +370,60 @@ func GenerateRSAKeyWithExponent(bits int, exponent int) (PrivateKey, error) {
 	})
 	return p, nil
 }
+
+// GenerateECKey generates a new elliptic curve private key on the speicified
+// curve.
+func GenerateECKey(curve EllipticCurve) (PrivateKey, error) {
+	var rc C.int
+
+	// Create context for parameter generation
+	paramCtx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_EC, nil)
+	if paramCtx == nil {
+		return nil, errors.New("failed creating EC parameter generation context")
+	}
+	defer C.EVP_PKEY_CTX_free(paramCtx)
+
+	// Intialize the parameter generation
+	rc = C.EVP_PKEY_paramgen_init(paramCtx)
+	if rc != 1 {
+		return nil, errors.New("failed initializing EC parameter generation context")
+	}
+
+	// Set curve in EC parameter generation context
+	rc = C.X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(paramCtx, C.int(curve))
+	if rc != 1 {
+		return nil, errors.New("failed setting curve in EC parameter generation context")
+	}
+
+	// Create parameter object
+	var params *C.EVP_PKEY
+	rc = C.EVP_PKEY_paramgen(paramCtx, &params)
+	if rc != 1 {
+		return nil, errors.New("failed creating EC key generation parameters")
+	}
+	defer C.EVP_PKEY_free(params)
+
+	// Create context for the key generation
+	keyCtx := C.EVP_PKEY_CTX_new(params, nil)
+	if keyCtx == nil {
+		return nil, errors.New("failed creating EC key generation context")
+	}
+	defer C.EVP_PKEY_CTX_free(keyCtx)
+
+	// Generate the key
+	var privKey *C.EVP_PKEY
+	rc = C.EVP_PKEY_keygen_init(keyCtx)
+	if rc != 1 {
+		return nil, errors.New("failed initializing EC key generation context")
+	}
+	rc = C.EVP_PKEY_keygen(keyCtx, &privKey)
+	if rc != 1 {
+		return nil, errors.New("failed generating EC private key")
+	}
+
+	p := &pKey{key: privKey}
+	runtime.SetFinalizer(p, func(p *pKey) {
+		C.X_EVP_PKEY_free(p.key)
+	})
+	return p, nil
+}
