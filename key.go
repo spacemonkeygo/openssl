@@ -32,6 +32,26 @@ var (
 	SHA512_Method Method = C.X_EVP_sha512()
 )
 
+type KeyType int
+
+const (
+	KeyTypeNone    KeyType = C.EVP_PKEY_NONE
+	KeyTypeRSA     KeyType = C.EVP_PKEY_RSA
+	KeyTypeRSA2    KeyType = C.EVP_PKEY_RSA2
+	KeyTypeDSA     KeyType = C.EVP_PKEY_DSA
+	KeyTypeDSA1    KeyType = C.EVP_PKEY_DSA1
+	KeyTypeDSA2    KeyType = C.EVP_PKEY_DSA2
+	KeyTypeDSA3    KeyType = C.EVP_PKEY_DSA3
+	KeyTypeDSA4    KeyType = C.EVP_PKEY_DSA4
+	KeyTypeDH      KeyType = C.EVP_PKEY_DH
+	KeyTypeDHX     KeyType = C.EVP_PKEY_DHX
+	KeyTypeEC      KeyType = C.EVP_PKEY_EC
+	KeyTypeHMAC    KeyType = C.EVP_PKEY_HMAC
+	KeyTypeCMAC    KeyType = C.EVP_PKEY_CMAC
+	KeyTypeTLS1PRF KeyType = C.EVP_PKEY_TLS1_PRF
+	KeyTypeHKDF    KeyType = C.EVP_PKEY_HKDF
+)
+
 type PublicKey interface {
 	// Verifies the data signature using PKCS1.15
 	VerifyPKCS1v15(method Method, data, sig []byte) error
@@ -43,6 +63,19 @@ type PublicKey interface {
 	// MarshalPKIXPublicKeyDER converts the public key to DER-encoded PKIX
 	// format
 	MarshalPKIXPublicKeyDER() (der_block []byte, err error)
+
+	// Type returns an identifier for what kind of key is represented by this
+	// object.
+	Type() KeyType
+
+	// BaseType returns an identifier for what kind of key is represented
+	// by this object.
+	// Keys that share same algorithm but use different legacy formats
+	// will have the same BaseType.
+	//
+	// For example, a key with a `Type() == KeyTypeRSA` and a key with a
+	// `Type() == KeyTypeRSA2` would both have `BaseType() == KeyTypeRSA`.
+	BaseType() KeyType
 
 	evpPKey() *C.EVP_PKEY
 }
@@ -67,6 +100,14 @@ type pKey struct {
 }
 
 func (key *pKey) evpPKey() *C.EVP_PKEY { return key.key }
+
+func (key *pKey) Type() KeyType {
+	return KeyType(C.EVP_PKEY_id(key.key))
+}
+
+func (key *pKey) BaseType() KeyType {
+	return KeyType(C.EVP_PKEY_base_id(key.key))
+}
 
 func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 	ctx := C.X_EVP_MD_CTX_new()
@@ -117,15 +158,15 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
 		return nil, errors.New("failed to allocate memory BIO")
 	}
 	defer C.BIO_free(bio)
-	rsa := (*C.RSA)(C.X_EVP_PKEY_get1_RSA(key.key))
-	if rsa == nil {
-		return nil, errors.New("failed getting rsa key")
-	}
-	defer C.RSA_free(rsa)
-	if int(C.PEM_write_bio_RSAPrivateKey(bio, rsa, nil, nil, C.int(0), nil,
-		nil)) != 1 {
+
+	// PEM_write_bio_PrivateKey_traditional will use the key-specific PKCS1
+	// format if one is available for that key type, otherwise it will encode
+	// to a PKCS8 key.
+	if int(C.PEM_write_bio_PrivateKey_traditional(bio, key.key, nil, nil,
+		C.int(0), nil, nil)) != 1 {
 		return nil, errors.New("failed dumping private key")
 	}
+
 	return ioutil.ReadAll(asAnyBio(bio))
 }
 
@@ -136,14 +177,11 @@ func (key *pKey) MarshalPKCS1PrivateKeyDER() (der_block []byte,
 		return nil, errors.New("failed to allocate memory BIO")
 	}
 	defer C.BIO_free(bio)
-	rsa := (*C.RSA)(C.X_EVP_PKEY_get1_RSA(key.key))
-	if rsa == nil {
-		return nil, errors.New("failed getting rsa key")
-	}
-	defer C.RSA_free(rsa)
-	if int(C.i2d_RSAPrivateKey_bio(bio, rsa)) != 1 {
+
+	if int(C.i2d_PrivateKey_bio(bio, key.key)) != 1 {
 		return nil, errors.New("failed dumping private key der")
 	}
+
 	return ioutil.ReadAll(asAnyBio(bio))
 }
 
@@ -154,14 +192,12 @@ func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
 		return nil, errors.New("failed to allocate memory BIO")
 	}
 	defer C.BIO_free(bio)
-	rsa := (*C.RSA)(C.X_EVP_PKEY_get1_RSA(key.key))
-	if rsa == nil {
-		return nil, errors.New("failed getting rsa key")
-	}
-	defer C.RSA_free(rsa)
-	if int(C.PEM_write_bio_RSA_PUBKEY(bio, rsa)) != 1 {
+
+	rc := C.PEM_write_bio_PUBKEY(bio, key.key)
+	if rc != 1 {
 		return nil, errors.New("failed dumping public key pem")
 	}
+
 	return ioutil.ReadAll(asAnyBio(bio))
 }
 
@@ -172,14 +208,11 @@ func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
 		return nil, errors.New("failed to allocate memory BIO")
 	}
 	defer C.BIO_free(bio)
-	rsa := (*C.RSA)(C.X_EVP_PKEY_get1_RSA(key.key))
-	if rsa == nil {
-		return nil, errors.New("failed getting rsa key")
-	}
-	defer C.RSA_free(rsa)
-	if int(C.i2d_RSA_PUBKEY_bio(bio, rsa)) != 1 {
+
+	if int(C.i2d_PUBKEY_bio(bio, key.key)) != 1 {
 		return nil, errors.New("failed dumping public key der")
 	}
+
 	return ioutil.ReadAll(asAnyBio(bio))
 }
 
@@ -195,20 +228,9 @@ func LoadPrivateKeyFromPEM(pem_block []byte) (PrivateKey, error) {
 	}
 	defer C.BIO_free(bio)
 
-	rsakey := C.PEM_read_bio_RSAPrivateKey(bio, nil, nil, nil)
-	if rsakey == nil {
-		return nil, errors.New("failed reading rsa key")
-	}
-	defer C.RSA_free(rsakey)
-
-	// convert to PKEY
-	key := C.X_EVP_PKEY_new()
+	key := C.PEM_read_bio_PrivateKey(bio, nil, nil, nil)
 	if key == nil {
-		return nil, errors.New("failed converting to evp_pkey")
-	}
-	if C.X_EVP_PKEY_set1_RSA(key, (*C.struct_rsa_st)(rsakey)) != 1 {
-		C.X_EVP_PKEY_free(key)
-		return nil, errors.New("failed converting to evp_pkey")
+		return nil, errors.New("failed reading private key")
 	}
 
 	p := &pKey{key: key}
@@ -232,20 +254,9 @@ func LoadPrivateKeyFromPEMWithPassword(pem_block []byte, password string) (
 	defer C.BIO_free(bio)
 	cs := C.CString(password)
 	defer C.free(unsafe.Pointer(cs))
-	rsakey := C.PEM_read_bio_RSAPrivateKey(bio, nil, nil, unsafe.Pointer(cs))
-	if rsakey == nil {
-		return nil, errors.New("failed reading rsa key")
-	}
-	defer C.RSA_free(rsakey)
-
-	// convert to PKEY
-	key := C.X_EVP_PKEY_new()
+	key := C.PEM_read_bio_PrivateKey(bio, nil, nil, unsafe.Pointer(cs))
 	if key == nil {
-		return nil, errors.New("failed converting to evp_pkey")
-	}
-	if C.X_EVP_PKEY_set1_RSA(key, (*C.struct_rsa_st)(rsakey)) != 1 {
-		C.X_EVP_PKEY_free(key)
-		return nil, errors.New("failed converting to evp_pkey")
+		return nil, errors.New("failed reading private key")
 	}
 
 	p := &pKey{key: key}
@@ -267,20 +278,9 @@ func LoadPrivateKeyFromDER(der_block []byte) (PrivateKey, error) {
 	}
 	defer C.BIO_free(bio)
 
-	rsakey := C.d2i_RSAPrivateKey_bio(bio, nil)
-	if rsakey == nil {
-		return nil, errors.New("failed reading rsa key")
-	}
-	defer C.RSA_free(rsakey)
-
-	// convert to PKEY
-	key := C.X_EVP_PKEY_new()
+	key := C.d2i_PrivateKey_bio(bio, nil)
 	if key == nil {
-		return nil, errors.New("failed converting to evp_pkey")
-	}
-	if C.X_EVP_PKEY_set1_RSA(key, (*C.struct_rsa_st)(rsakey)) != 1 {
-		C.X_EVP_PKEY_free(key)
-		return nil, errors.New("failed converting to evp_pkey")
+		return nil, errors.New("failed reading private key der")
 	}
 
 	p := &pKey{key: key}
@@ -309,20 +309,9 @@ func LoadPublicKeyFromPEM(pem_block []byte) (PublicKey, error) {
 	}
 	defer C.BIO_free(bio)
 
-	rsakey := C.PEM_read_bio_RSA_PUBKEY(bio, nil, nil, nil)
-	if rsakey == nil {
-		return nil, errors.New("failed reading rsa key")
-	}
-	defer C.RSA_free(rsakey)
-
-	// convert to PKEY
-	key := C.X_EVP_PKEY_new()
+	key := C.PEM_read_bio_PUBKEY(bio, nil, nil, nil)
 	if key == nil {
-		return nil, errors.New("failed converting to evp_pkey")
-	}
-	if C.X_EVP_PKEY_set1_RSA(key, (*C.struct_rsa_st)(rsakey)) != 1 {
-		C.X_EVP_PKEY_free(key)
-		return nil, errors.New("failed converting to evp_pkey")
+		return nil, errors.New("failed reading public key der")
 	}
 
 	p := &pKey{key: key}
@@ -344,20 +333,9 @@ func LoadPublicKeyFromDER(der_block []byte) (PublicKey, error) {
 	}
 	defer C.BIO_free(bio)
 
-	rsakey := C.d2i_RSA_PUBKEY_bio(bio, nil)
-	if rsakey == nil {
-		return nil, errors.New("failed reading rsa key")
-	}
-	defer C.RSA_free(rsakey)
-
-	// convert to PKEY
-	key := C.X_EVP_PKEY_new()
+	key := C.d2i_PUBKEY_bio(bio, nil)
 	if key == nil {
-		return nil, errors.New("failed converting to evp_pkey")
-	}
-	if C.X_EVP_PKEY_set1_RSA(key, (*C.struct_rsa_st)(rsakey)) != 1 {
-		C.X_EVP_PKEY_free(key)
-		return nil, errors.New("failed converting to evp_pkey")
+		return nil, errors.New("failed reading public key der")
 	}
 
 	p := &pKey{key: key}
