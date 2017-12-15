@@ -193,8 +193,7 @@ func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
 	}
 	defer C.BIO_free(bio)
 
-	rc := C.PEM_write_bio_PUBKEY(bio, key.key)
-	if rc != 1 {
+	if int(C.PEM_write_bio_PUBKEY(bio, key.key)) != 1 {
 		return nil, errors.New("failed dumping public key pem")
 	}
 
@@ -374,7 +373,6 @@ func GenerateRSAKeyWithExponent(bits int, exponent int) (PrivateKey, error) {
 // GenerateECKey generates a new elliptic curve private key on the speicified
 // curve.
 func GenerateECKey(curve EllipticCurve) (PrivateKey, error) {
-	var rc C.int
 
 	// Create context for parameter generation
 	paramCtx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_EC, nil)
@@ -384,21 +382,18 @@ func GenerateECKey(curve EllipticCurve) (PrivateKey, error) {
 	defer C.EVP_PKEY_CTX_free(paramCtx)
 
 	// Intialize the parameter generation
-	rc = C.EVP_PKEY_paramgen_init(paramCtx)
-	if rc != 1 {
+	if int(C.EVP_PKEY_paramgen_init(paramCtx)) != 1 {
 		return nil, errors.New("failed initializing EC parameter generation context")
 	}
 
 	// Set curve in EC parameter generation context
-	rc = C.X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(paramCtx, C.int(curve))
-	if rc != 1 {
+	if int(C.X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(paramCtx, C.int(curve))) != 1 {
 		return nil, errors.New("failed setting curve in EC parameter generation context")
 	}
 
 	// Create parameter object
 	var params *C.EVP_PKEY
-	rc = C.EVP_PKEY_paramgen(paramCtx, &params)
-	if rc != 1 {
+	if int(C.EVP_PKEY_paramgen(paramCtx, &params)) != 1 {
 		return nil, errors.New("failed creating EC key generation parameters")
 	}
 	defer C.EVP_PKEY_free(params)
@@ -412,12 +407,10 @@ func GenerateECKey(curve EllipticCurve) (PrivateKey, error) {
 
 	// Generate the key
 	var privKey *C.EVP_PKEY
-	rc = C.EVP_PKEY_keygen_init(keyCtx)
-	if rc != 1 {
+	if int(C.EVP_PKEY_keygen_init(keyCtx)) != 1 {
 		return nil, errors.New("failed initializing EC key generation context")
 	}
-	rc = C.EVP_PKEY_keygen(keyCtx, &privKey)
-	if rc != 1 {
+	if int(C.EVP_PKEY_keygen(keyCtx, &privKey)) != 1 {
 		return nil, errors.New("failed generating EC private key")
 	}
 
