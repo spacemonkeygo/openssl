@@ -64,17 +64,17 @@ type PublicKey interface {
 	// format
 	MarshalPKIXPublicKeyDER() (der_block []byte, err error)
 
-	// Type returns an identifier for what kind of key is represented by this
+	// KeyType returns an identifier for what kind of key is represented by this
 	// object.
-	Type() KeyType
+	KeyType() KeyType
 
 	// BaseType returns an identifier for what kind of key is represented
 	// by this object.
 	// Keys that share same algorithm but use different legacy formats
 	// will have the same BaseType.
 	//
-	// For example, a key with a `Type() == KeyTypeRSA` and a key with a
-	// `Type() == KeyTypeRSA2` would both have `BaseType() == KeyTypeRSA`.
+	// For example, a key with a `KeyType() == KeyTypeRSA` and a key with a
+	// `KeyType() == KeyTypeRSA2` would both have `BaseType() == KeyTypeRSA`.
 	BaseType() KeyType
 
 	evpPKey() *C.EVP_PKEY
@@ -101,7 +101,7 @@ type pKey struct {
 
 func (key *pKey) evpPKey() *C.EVP_PKEY { return key.key }
 
-func (key *pKey) Type() KeyType {
+func (key *pKey) KeyType() KeyType {
 	return KeyType(C.EVP_PKEY_id(key.key))
 }
 
