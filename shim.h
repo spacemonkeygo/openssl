@@ -42,6 +42,7 @@ extern int X_shim_init();
 
 /* Library methods */
 extern void X_OPENSSL_free(void *ref);
+extern void *X_OPENSSL_malloc(size_t size);
 
 /* SSL methods */
 extern long X_SSL_set_options(SSL* ssl, long options);

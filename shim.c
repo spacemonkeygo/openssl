@@ -312,6 +312,10 @@ int X_shim_init() {
 	return 0;
 }
 
+void * X_OPENSSL_malloc(size_t size) {
+	return OPENSSL_malloc(size);
+}
+
 void X_OPENSSL_free(void *ref) {
 	OPENSSL_free(ref);
 }
