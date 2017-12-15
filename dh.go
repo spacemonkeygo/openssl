@@ -34,21 +34,18 @@ func DeriveSharedSecret(private PrivateKey, public PublicKey) ([]byte, error) {
 	defer C.EVP_PKEY_CTX_free(dhCtx)
 
 	// Initialize the context
-	rc := C.EVP_PKEY_derive_init(dhCtx)
-	if rc != 1 {
+	if int(C.EVP_PKEY_derive_init(dhCtx)) != 1 {
 		return nil, errors.New("failed initializing shared secret derivation context")
 	}
 
 	// Provide the peer's public key
-	rc = C.EVP_PKEY_derive_set_peer(dhCtx, public.evpPKey())
-	if rc != 1 {
+	if int(C.EVP_PKEY_derive_set_peer(dhCtx, public.evpPKey())) != 1 {
 		return nil, errors.New("failed adding peer public key to context")
 	}
 
 	// Determine how large of a buffer we need for the shared secret
 	var buffLen C.size_t
-	rc = C.EVP_PKEY_derive(dhCtx, nil, &buffLen)
-	if rc != 1 {
+	if int(C.EVP_PKEY_derive(dhCtx, nil, &buffLen)) != 1 {
 		return nil, errors.New("failed determining shared secret length")
 	}
 
@@ -60,8 +57,7 @@ func DeriveSharedSecret(private PrivateKey, public PublicKey) ([]byte, error) {
 	defer C.X_OPENSSL_free(buffer)
 
 	// Derive the shared secret
-	rc = C.EVP_PKEY_derive(dhCtx, (*C.uchar)(buffer), &buffLen)
-	if rc != 1 {
+	if int(C.EVP_PKEY_derive(dhCtx, (*C.uchar)(buffer), &buffLen)) != 1 {
 		return nil, errors.New("failed deriving the shared secret")
 	}
 
