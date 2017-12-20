@@ -32,24 +32,24 @@ var (
 	SHA512_Method Method = C.X_EVP_sha512()
 )
 
-type KeyType int
-
+// Constants for the various key types.
+// Mapping of name -> NID taken from openssl/evp.h
 const (
-	KeyTypeNone    KeyType = C.EVP_PKEY_NONE
-	KeyTypeRSA     KeyType = C.EVP_PKEY_RSA
-	KeyTypeRSA2    KeyType = C.EVP_PKEY_RSA2
-	KeyTypeDSA     KeyType = C.EVP_PKEY_DSA
-	KeyTypeDSA1    KeyType = C.EVP_PKEY_DSA1
-	KeyTypeDSA2    KeyType = C.EVP_PKEY_DSA2
-	KeyTypeDSA3    KeyType = C.EVP_PKEY_DSA3
-	KeyTypeDSA4    KeyType = C.EVP_PKEY_DSA4
-	KeyTypeDH      KeyType = C.EVP_PKEY_DH
-	KeyTypeDHX     KeyType = C.EVP_PKEY_DHX
-	KeyTypeEC      KeyType = C.EVP_PKEY_EC
-	KeyTypeHMAC    KeyType = C.EVP_PKEY_HMAC
-	KeyTypeCMAC    KeyType = C.EVP_PKEY_CMAC
-	KeyTypeTLS1PRF KeyType = C.EVP_PKEY_TLS1_PRF
-	KeyTypeHKDF    KeyType = C.EVP_PKEY_HKDF
+	KeyTypeNone    = NID_undef
+	KeyTypeRSA     = NID_rsaEncryption
+	KeyTypeRSA2    = NID_rsa
+	KeyTypeDSA     = NID_dsa
+	KeyTypeDSA1    = NID_dsa_2
+	KeyTypeDSA2    = NID_dsaWithSHA
+	KeyTypeDSA3    = NID_dsaWithSHA1
+	KeyTypeDSA4    = NID_dsaWithSHA1_2
+	KeyTypeDH      = NID_dhKeyAgreement
+	KeyTypeDHX     = NID_dhpublicnumber
+	KeyTypeEC      = NID_x9_62_id_ecPublicKey
+	KeyTypeHMAC    = NID_hmac
+	KeyTypeCMAC    = NID_cmac
+	KeyTypeTLS1PRF = NID_tls1_prf
+	KeyTypeHKDF    = NID_hdkf
 )
 
 type PublicKey interface {
@@ -66,7 +66,7 @@ type PublicKey interface {
 
 	// KeyType returns an identifier for what kind of key is represented by this
 	// object.
-	KeyType() KeyType
+	KeyType() NID
 
 	// BaseType returns an identifier for what kind of key is represented
 	// by this object.
@@ -75,7 +75,7 @@ type PublicKey interface {
 	//
 	// For example, a key with a `KeyType() == KeyTypeRSA` and a key with a
 	// `KeyType() == KeyTypeRSA2` would both have `BaseType() == KeyTypeRSA`.
-	BaseType() KeyType
+	BaseType() NID
 
 	evpPKey() *C.EVP_PKEY
 }
@@ -101,12 +101,12 @@ type pKey struct {
 
 func (key *pKey) evpPKey() *C.EVP_PKEY { return key.key }
 
-func (key *pKey) KeyType() KeyType {
-	return KeyType(C.EVP_PKEY_id(key.key))
+func (key *pKey) KeyType() NID {
+	return NID(C.EVP_PKEY_id(key.key))
 }
 
-func (key *pKey) BaseType() KeyType {
-	return KeyType(C.EVP_PKEY_base_id(key.key))
+func (key *pKey) BaseType() NID {
+	return NID(C.EVP_PKEY_base_id(key.key))
 }
 
 func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
@@ -162,7 +162,7 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
 	// PEM_write_bio_PrivateKey_traditional will use the key-specific PKCS1
 	// format if one is available for that key type, otherwise it will encode
 	// to a PKCS8 key.
-	if int(C.PEM_write_bio_PrivateKey_traditional(bio, key.key, nil, nil,
+	if int(C.X_PEM_write_bio_PrivateKey_traditional(bio, key.key, nil, nil,
 		C.int(0), nil, nil)) != 1 {
 		return nil, errors.New("failed dumping private key")
 	}
