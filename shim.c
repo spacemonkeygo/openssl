@@ -156,6 +156,10 @@ void X_HMAC_CTX_free(HMAC_CTX *ctx) {
 	HMAC_CTX_free(ctx);
 }
 
+int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CIPHER *enc, unsigned char *kstr, int klen, pem_password_cb *cb, void *u) {
+	return PEM_write_bio_PrivateKey_traditional(bio, key, enc, kstr, klen, cb, u);
+}
+
 #endif
 
 
@@ -274,6 +278,32 @@ void X_HMAC_CTX_free(HMAC_CTX *ctx) {
 		HMAC_CTX_cleanup(ctx);
 		OPENSSL_free(ctx);
 	}
+}
+
+int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CIPHER *enc, unsigned char *kstr, int klen, pem_password_cb *cb, void *u) {
+	/* PEM_write_bio_PrivateKey always tries to use the PKCS8 format if it
+	 * is available, instead of using the "traditional" format as stated in the
+	 * OpenSSL man page.
+	 * i2d_PrivateKey should give us the correct DER encoding, so we'll just
+	 * use PEM_ASN1_write_bio directly to write the DER encoding with the correct
+	 * type header. */
+
+	int ppkey_id, pkey_base_id, ppkey_flags;
+	const char *pinfo, *ppem_str;
+	char pem_type_str[80];
+
+	// Lookup the ASN1 method information to get the pem type
+	if (EVP_PKEY_asn1_get0_info(&ppkey_id, &pkey_base_id, &ppkey_flags, &pinfo, &ppem_str, key->ameth) != 1) {
+		return 0;
+	}
+	// Set up the PEM type string
+	if (BIO_snprintf(pem_type_str, 80, "%s PRIVATE KEY", ppem_str) <= 0) {
+		// Failed to write out the pem type string, something is really wrong.
+		return 0;
+	}
+	// Write out everything to the BIO
+	return PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey,
+		pem_type_str, bio, key, enc, kstr, klen, cb, u);
 }
 
 #endif
