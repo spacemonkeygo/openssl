@@ -197,10 +197,10 @@ const (
 	NID_ad_OCSP                            NID = 178
 	NID_ad_ca_issuers                      NID = 179
 	NID_OCSP_sign                          NID = 180
-	NID_x9_62_id_ecPublicKey               NID = 408
+	NID_X9_62_id_ecPublicKey               NID = 408
 	NID_hmac                               NID = 855
 	NID_cmac                               NID = 894
 	NID_dhpublicnumber                     NID = 920
 	NID_tls1_prf                           NID = 1021
-	NID_hdkf                               NID = 1036
+	NID_hkdf                               NID = 1036
 )
