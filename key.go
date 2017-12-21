@@ -45,11 +45,11 @@ const (
 	KeyTypeDSA4    = NID_dsaWithSHA1_2
 	KeyTypeDH      = NID_dhKeyAgreement
 	KeyTypeDHX     = NID_dhpublicnumber
-	KeyTypeEC      = NID_x9_62_id_ecPublicKey
+	KeyTypeEC      = NID_X9_62_id_ecPublicKey
 	KeyTypeHMAC    = NID_hmac
 	KeyTypeCMAC    = NID_cmac
 	KeyTypeTLS1PRF = NID_tls1_prf
-	KeyTypeHKDF    = NID_hdkf
+	KeyTypeHKDF    = NID_hkdf
 )
 
 type PublicKey interface {
