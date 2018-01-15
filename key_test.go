@@ -77,7 +77,7 @@ func TestMarshal(t *testing.T) {
 	}
 	tls_der := x509.MarshalPKCS1PrivateKey(tls_key)
 	if !bytes.Equal(der, tls_der) {
-		t.Fatal("invalid private key der bytes: %s\n v.s. %s\n",
+		t.Fatalf("invalid private key der bytes: %s\n v.s. %s\n",
 			hex.Dump(der), hex.Dump(tls_der))
 	}
 
@@ -291,7 +291,7 @@ func TestMarshalEC(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(der, tls_der) {
-		t.Fatal("invalid private key der bytes: %s\n v.s. %s\n",
+		t.Fatalf("invalid private key der bytes: %s\n v.s. %s\n",
 			hex.Dump(der), hex.Dump(tls_der))
 	}
 

@@ -35,7 +35,7 @@ func TestSHA256(t *testing.T) {
 		}
 
 		if expected != got {
-			t.Fatal("exp:%x got:%x", expected, got)
+			t.Fatalf("exp:%x got:%x", expected, got)
 		}
 	}
 }
@@ -73,7 +73,7 @@ func TestSHA256Writer(t *testing.T) {
 		}
 
 		if got != exp {
-			t.Fatal("exp:%x got:%x", exp, got)
+			t.Fatalf("exp:%x got:%x", exp, got)
 		}
 	}
 }
