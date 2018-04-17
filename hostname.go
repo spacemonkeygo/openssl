@@ -95,6 +95,12 @@ func (c *Certificate) CheckEmail(email string, flags CheckFlags) error {
 // Specifically returns ValidationError if the Certificate didn't match but
 // there was no internal error.
 func (c *Certificate) CheckIP(ip net.IP, flags CheckFlags) error {
+	// X509_check_ip will fail to validate the 16-byte representation of an IPv4
+	// address, so convert to the 4-byte representation.
+	if ip4 := ip.To4(); ip4 != nil {
+		ip = ip4
+	}
+
 	cip := unsafe.Pointer(&ip[0])
 	rv := C.X509_check_ip(c.x, (*C.uchar)(cip), C.size_t(len(ip)),
 		C.uint(flags))
