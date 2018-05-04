@@ -89,6 +89,10 @@ type PrivateKey interface {
 	// MarshalPKCS1PrivateKeyPEM converts the private key to PEM-encoded PKCS1
 	// format
 	MarshalPKCS1PrivateKeyPEM() (pem_block []byte, err error)
+	
+	// MarshalPKCS1PrivateKeyPEM converts the private key to PEM-encoded PKCS8
+	// format
+	MarshalPKCS8PrivateKeyPEM() (pem_block []byte, err error)
 
 	// MarshalPKCS1PrivateKeyDER converts the private key to DER-encoded PKCS1
 	// format
@@ -163,6 +167,25 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
 	// format if one is available for that key type, otherwise it will encode
 	// to a PKCS8 key.
 	if int(C.X_PEM_write_bio_PrivateKey_traditional(bio, key.key, nil, nil,
+		C.int(0), nil, nil)) != 1 {
+		return nil, errors.New("failed dumping private key")
+	}
+
+	return ioutil.ReadAll(asAnyBio(bio))
+}
+
+func (key *pKey) MarshalPKCS8PrivateKeyPEM() (pem_block []byte,
+err error) {
+	bio := C.BIO_new(C.BIO_s_mem())
+	if bio == nil {
+		return nil, errors.New("failed to allocate memory BIO")
+	}
+	defer C.BIO_free(bio)
+
+	// PEM_write_bio_PrivateKey_traditional will use the key-specific PKCS1
+	// format if one is available for that key type, otherwise it will encode
+	// to a PKCS8 key.
+	if int(C.X_PEM_write_bio_PrivateKey_pkcs8(bio, key.key, nil, nil,
 		C.int(0), nil, nil)) != 1 {
 		return nil, errors.New("failed dumping private key")
 	}
