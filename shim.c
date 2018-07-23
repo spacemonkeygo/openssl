@@ -33,6 +33,7 @@
  */
 extern int go_init_locks();
 extern void go_thread_locking_callback(int, int, const char*, int);
+extern unsigned long go_thread_id_callback();
 static int go_write_bio_puts(BIO *b, const char *str) {
 	return go_write_bio_write(b, (char*)str, (int)strlen(str));
 }
@@ -325,14 +326,13 @@ int X_shim_init() {
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
 	//
-	// Set up OPENSSL thread safety callbacks.  We only set the locking
-	// callback because the default id callback implementation is good
-	// enough for us.
+	// Set up OPENSSL thread safety callbacks.  
 	rc = go_init_locks();
 	if (rc != 0) {
 		return rc;
 	}
 	CRYPTO_set_locking_callback(go_thread_locking_callback);
+	CRYPTO_set_id_callback(go_thread_id_callback)
 
 	rc = x_bio_init_methods();
 	if (rc != 0) {
