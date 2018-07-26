@@ -61,12 +61,8 @@ void go_thread_locking_callback(int mode, int n, const char *file,
 	}
 }
 
-unsigned long go_thread_id_callback(void)
-{
-    unsigned long ret;
-
-    ret = (unsigned long)pthread_self();
-    return (ret);
+unsigned long go_thread_id_callback(void) {
+    return (unsigned long)pthread_self();
 }
 */
 import "C"

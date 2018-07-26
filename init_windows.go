@@ -49,5 +49,9 @@ void go_thread_locking_callback(int mode, int n, const char *file,
 		LeaveCriticalSection(&goopenssl_locks[n]);
 	}
 }
+
+unsigned long go_thread_id_callback(void) {
+    return (unsigned long)GetCurrentThreadId();
+}
 */
 import "C"
