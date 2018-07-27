@@ -326,13 +326,13 @@ int X_shim_init() {
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
 	//
-	// Set up OPENSSL thread safety callbacks.  
+	// Set up OPENSSL thread safety callbacks.
 	rc = go_init_locks();
 	if (rc != 0) {
 		return rc;
 	}
 	CRYPTO_set_locking_callback(go_thread_locking_callback);
-	CRYPTO_set_id_callback(go_thread_id_callback)
+	CRYPTO_set_id_callback(go_thread_id_callback);
 
 	rc = x_bio_init_methods();
 	if (rc != 0) {
