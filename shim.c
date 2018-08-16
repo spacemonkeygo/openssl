@@ -664,6 +664,12 @@ int X_EVP_CIPHER_CTX_iv_length(EVP_CIPHER_CTX *ctx) {
     return EVP_CIPHER_CTX_iv_length(ctx);
 }
 
+void X_EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *ctx, int padding) {
+    //openssl always returns 1 for set_padding
+    //hence return value is not checked 
+    EVP_CIPHER_CTX_set_padding(ctx, padding);
+}
+
 const EVP_CIPHER *X_EVP_CIPHER_CTX_cipher(EVP_CIPHER_CTX *ctx) {
     return EVP_CIPHER_CTX_cipher(ctx);
 }
