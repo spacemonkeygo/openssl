@@ -317,6 +317,11 @@ int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CI
  ************************************************
  */
 
+
+int X_PEM_write_bio_PrivateKey_pkcs8(BIO *bio, EVP_PKEY *key, const EVP_CIPHER *enc, unsigned char *kstr, int klen, pem_password_cb *cb, void *u) {
+	return PEM_write_bio_PKCS8PrivateKey(bio, key, enc, kstr, klen, cb, u);
+}
+
 int X_shim_init() {
 	int rc = 0;
 
