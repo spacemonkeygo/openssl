@@ -123,18 +123,11 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 		// do ED specific one-shot sign
 		fmt.Println("Doing ed sign")
 
-		// Key context
-		kctx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_ED25519, nil)
-		if kctx == nil {
-			return nil, errors.New("failed creating ED CTX")
-		}
-		defer C.EVP_PKEY_CTX_free(kctx)
-
 		if method != nil || len(data) == 0 {
 			return nil, errors.New("signpkcs1v15: 0-length data or non-null digest")
 		}
 
-		if 1 != C.X_EVP_DigestSignInit(ctx, &kctx, nil, nil, key.key) {
+		if 1 != C.X_EVP_DigestSignInit(ctx, nil, nil, nil, key.key) {
 			return nil, errors.New("signpkcs1v15: failed to init signature")
 		}
 
@@ -178,18 +171,11 @@ func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 		// do ED specific one-shot sign
 		fmt.Println("Doing ed verify")
 
-		// Key context
-		kctx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_ED25519, nil)
-		if kctx == nil {
-			return errors.New("failed creating ED CTX")
-		}
-		defer C.EVP_PKEY_CTX_free(kctx)
-
 		if method != nil || len(data) == 0 || len(sig) == 0 {
 			return errors.New("Verrifypkcs1v15: 0-length data or sig or non-null digest")
 		}
 
-		if 1 != C.X_EVP_DigestVerifyInit(ctx, &kctx, nil, nil, key.key) {
+		if 1 != C.X_EVP_DigestVerifyInit(ctx, nil, nil, nil, key.key) {
 			return errors.New("Verifypkcs1v15: failed to init verify")
 		}
 
