@@ -203,4 +203,8 @@ const (
 	NID_dhpublicnumber                     NID = 920
 	NID_tls1_prf                           NID = 1021
 	NID_hkdf                               NID = 1036
+	NID_X25519							   NID = 1034
+	NID_X448							   NID = 1035
+	NID_ED25519							   NID = 1087
+	NID_ED448							   NID = 1088
 )

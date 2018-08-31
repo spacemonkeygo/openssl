@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"runtime"
 	"unsafe"
+	"fmt"
 )
 
 type Method *C.EVP_MD
@@ -50,6 +51,10 @@ const (
 	KeyTypeCMAC    = NID_cmac
 	KeyTypeTLS1PRF = NID_tls1_prf
 	KeyTypeHKDF    = NID_hkdf
+	KeyTypeX25519  = NID_X25519
+	KeyTypeX448    = NID_X448
+	KeyTypeED25519 = NID_ED25519
+	KeyTypeED448   = NID_ED448
 )
 
 type PublicKey interface {
@@ -110,45 +115,110 @@ func (key *pKey) BaseType() NID {
 }
 
 func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
+
 	ctx := C.X_EVP_MD_CTX_new()
 	defer C.X_EVP_MD_CTX_free(ctx)
 
-	if 1 != C.X_EVP_SignInit(ctx, method) {
-		return nil, errors.New("signpkcs1v15: failed to init signature")
-	}
-	if len(data) > 0 {
-		if 1 != C.X_EVP_SignUpdate(
-			ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
-			return nil, errors.New("signpkcs1v15: failed to update signature")
+	if key.KeyType() == KeyTypeED25519 {
+		// do ED specific one-shot sign
+		fmt.Println("Doing ed sign")
+
+		// Key context
+		kctx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_ED25519, nil)
+		if kctx == nil {
+			return nil, errors.New("failed creating ED CTX")
 		}
+		defer C.EVP_PKEY_CTX_free(kctx)
+
+		if method != nil || len(data) == 0 {
+			return nil, errors.New("signpkcs1v15: 0-length data or non-null digest")
+		}
+
+		if 1 != C.X_EVP_DigestSignInit(ctx, &kctx, nil, nil, key.key) {
+			return nil, errors.New("signpkcs1v15: failed to init signature")
+		}
+
+		// evp signatures are 64 bytes
+		sig := make([]byte, 64, 64)
+		var sigblen C.ulong = 64
+		if 1 != C.X_EVP_DigestSign(ctx,
+								   ((*C.uchar)(unsafe.Pointer(&sig[0]))),
+									&sigblen,
+									(*C.uchar)(unsafe.Pointer(&data[0])),
+									C.ulong(len(data))) {
+			return nil, errors.New("signpkcs1v15: failed to do one-shot signature")
+		}
+
+		return sig[:sigblen], nil
+	} else {
+		if 1 != C.X_EVP_SignInit(ctx, method) {
+			return nil, errors.New("signpkcs1v15: failed to init signature")
+		}
+		if len(data) > 0 {
+			if 1 != C.X_EVP_SignUpdate(
+				ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
+				return nil, errors.New("signpkcs1v15: failed to update signature")
+			}
+		}
+		sig := make([]byte, C.X_EVP_PKEY_size(key.key))
+		var sigblen C.uint
+		if 1 != C.X_EVP_SignFinal(ctx,
+			((*C.uchar)(unsafe.Pointer(&sig[0]))), &sigblen, key.key) {
+			return nil, errors.New("signpkcs1v15: failed to finalize signature")
+		}
+		return sig[:sigblen], nil
 	}
-	sig := make([]byte, C.X_EVP_PKEY_size(key.key))
-	var sigblen C.uint
-	if 1 != C.X_EVP_SignFinal(ctx,
-		((*C.uchar)(unsafe.Pointer(&sig[0]))), &sigblen, key.key) {
-		return nil, errors.New("signpkcs1v15: failed to finalize signature")
-	}
-	return sig[:sigblen], nil
 }
 
 func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 	ctx := C.X_EVP_MD_CTX_new()
 	defer C.X_EVP_MD_CTX_free(ctx)
 
-	if 1 != C.X_EVP_VerifyInit(ctx, method) {
-		return errors.New("verifypkcs1v15: failed to init verify")
-	}
-	if len(data) > 0 {
-		if 1 != C.X_EVP_VerifyUpdate(
-			ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
-			return errors.New("verifypkcs1v15: failed to update verify")
+	if key.KeyType() == KeyTypeED25519 {
+		// do ED specific one-shot sign
+		fmt.Println("Doing ed verify")
+
+		// Key context
+		kctx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_ED25519, nil)
+		if kctx == nil {
+			return errors.New("failed creating ED CTX")
 		}
+		defer C.EVP_PKEY_CTX_free(kctx)
+
+		if method != nil || len(data) == 0 || len(sig) == 0 {
+			return errors.New("Verrifypkcs1v15: 0-length data or sig or non-null digest")
+		}
+
+		if 1 != C.X_EVP_DigestVerifyInit(ctx, &kctx, nil, nil, key.key) {
+			return errors.New("Verifypkcs1v15: failed to init verify")
+		}
+
+		if 1 != C.X_EVP_DigestVerify(ctx,
+									((*C.uchar)(unsafe.Pointer(&sig[0]))),
+									C.ulong(len(sig)),
+									(*C.uchar)(unsafe.Pointer(&data[0])),
+									C.ulong(len(data))) {
+			return errors.New("Verifypkcs1v15: failed to do one-shot verify")
+		}
+
+		return nil
+
+	} else {
+		if 1 != C.X_EVP_VerifyInit(ctx, method) {
+			return errors.New("verifypkcs1v15: failed to init verify")
+		}
+		if len(data) > 0 {
+			if 1 != C.X_EVP_VerifyUpdate(
+				ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
+				return errors.New("verifypkcs1v15: failed to update verify")
+			}
+		}
+		if 1 != C.X_EVP_VerifyFinal(ctx,
+			((*C.uchar)(unsafe.Pointer(&sig[0]))), C.uint(len(sig)), key.key) {
+			return errors.New("verifypkcs1v15: failed to finalize verify")
+		}
+		return nil
 	}
-	if 1 != C.X_EVP_VerifyFinal(ctx,
-		((*C.uchar)(unsafe.Pointer(&sig[0]))), C.uint(len(sig)), key.key) {
-		return errors.New("verifypkcs1v15: failed to finalize verify")
-	}
-	return nil
 }
 
 func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
@@ -412,6 +482,32 @@ func GenerateECKey(curve EllipticCurve) (PrivateKey, error) {
 	}
 	if int(C.EVP_PKEY_keygen(keyCtx, &privKey)) != 1 {
 		return nil, errors.New("failed generating EC private key")
+	}
+
+	p := &pKey{key: privKey}
+	runtime.SetFinalizer(p, func(p *pKey) {
+		C.X_EVP_PKEY_free(p.key)
+	})
+	return p, nil
+}
+
+// GenerateED25519Key generates a Ed25519 key
+func GenerateED25519Key() (PrivateKey, error) {
+
+	// Key context
+	keyCtx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_ED25519, nil)
+	if keyCtx == nil {
+		return nil, errors.New("failed creating EC parameter generation context")
+	}
+	defer C.EVP_PKEY_CTX_free(keyCtx)
+
+	// Generate the key
+	var privKey *C.EVP_PKEY
+	if int(C.EVP_PKEY_keygen_init(keyCtx)) != 1 {
+		return nil, errors.New("failed initializing ED25519 key generation context")
+	}
+	if int(C.EVP_PKEY_keygen(keyCtx, &privKey)) != 1 {
+		return nil, errors.New("failed generating ED25519 private key")
 	}
 
 	p := &pKey{key: privKey}

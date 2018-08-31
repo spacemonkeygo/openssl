@@ -591,6 +591,34 @@ int X_EVP_SignInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 	return EVP_SignInit(ctx, type);
 }
 
+int X_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey){
+    return EVP_DigestSignInit(ctx, pctx, type, e, pkey);
+}
+
+int X_EVP_DigestSign(EVP_MD_CTX *ctx, unsigned char *sigret,
+                                                size_t *siglen, const unsigned char *tbs,
+                                                size_t tbslen){
+    return EVP_DigestSign(ctx, sigret, siglen, tbs, tbslen);
+}
+
+int X_EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+                          const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey){
+    return EVP_DigestVerifyInit(ctx, pctx, type, e, pkey);
+}
+
+int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
+                             size_t siglen, const unsigned char *tbs, size_t tbslen){
+    return EVP_DigestVerify(ctx, sigret, siglen, tbs, tbslen);
+}
+
+extern  int X_PEM_write_PrivateKey(FILE *fp, EVP_PKEY *x, const EVP_CIPHER *enc,
+                                 unsigned char *kstr, int klen,
+                                 pem_password_cb *cb, void *u) {
+     return PEM_write_PrivateKey(fp, x, enc, kstr, klen, cb, u);
+}
+
+
+
 int X_EVP_SignUpdate(EVP_MD_CTX *ctx, const void *d, unsigned int cnt) {
 	return EVP_SignUpdate(ctx, d, cnt);
 }
