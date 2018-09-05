@@ -21,7 +21,7 @@ import (
 )
 
 func TestCertGenerate(t *testing.T) {
-	key, err := GenerateRSAKey(2048)
+	key, err := GenerateRSAKey(768)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestCertGenerate(t *testing.T) {
 }
 
 func TestCAGenerate(t *testing.T) {
-	cakey, err := GenerateRSAKey(2048)
+	cakey, err := GenerateRSAKey(768)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestCAGenerate(t *testing.T) {
 	if err := ca.Sign(cakey, EVP_SHA256); err != nil {
 		t.Fatal(err)
 	}
-	key, err := GenerateRSAKey(2048)
+	key, err := GenerateRSAKey(768)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestCAGenerate(t *testing.T) {
 }
 
 func TestCertGetNameEntry(t *testing.T) {
-	key, err := GenerateRSAKey(2048)
+	key, err := GenerateRSAKey(768)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,5 +135,30 @@ func TestCertGetNameEntry(t *testing.T) {
 	}
 	if entry != "" {
 		t.Fatalf("entry should be empty; got %q", entry)
+	}
+}
+
+func TestCertVersion(t *testing.T) {
+	key, err := GenerateRSAKey(768)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := &CertificateInfo{
+		Serial:       big.NewInt(int64(1)),
+		Issued:       0,
+		Expires:      24 * time.Hour,
+		Country:      "US",
+		Organization: "Test",
+		CommonName:   "localhost",
+	}
+	cert, err := NewCertificate(info, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cert.SetVersion(X509_V3); err != nil {
+		t.Fatal(err)
+	}
+	if vers := cert.GetVersion(); vers != X509_V3 {
+		t.Fatalf("bad version: %d", vers)
 	}
 }

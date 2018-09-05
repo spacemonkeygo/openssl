@@ -666,7 +666,7 @@ int X_EVP_CIPHER_CTX_iv_length(EVP_CIPHER_CTX *ctx) {
 
 void X_EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *ctx, int padding) {
     //openssl always returns 1 for set_padding
-    //hence return value is not checked 
+    //hence return value is not checked
     EVP_CIPHER_CTX_set_padding(ctx, padding);
 }
 
@@ -700,4 +700,12 @@ int X_sk_X509_num(STACK_OF(X509) *sk) {
 
 X509 *X_sk_X509_value(STACK_OF(X509)* sk, int i) {
    return sk_X509_value(sk, i);
+}
+
+long X_X509_get_version(const X509 *x) {
+	return X509_get_version(x);
+}
+
+int X_X509_set_version(X509 *x, long version) {
+	return X509_set_version(x, version);
 }
