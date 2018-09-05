@@ -151,8 +151,9 @@ func (ctx *cipherCtx) IVSize() int {
 func (ctx *cipherCtx) SetPadding(pad bool) {
 	if pad {
 		C.X_EVP_CIPHER_CTX_set_padding(ctx.ctx, 1)
+	} else {
+		C.X_EVP_CIPHER_CTX_set_padding(ctx.ctx, 0)
 	}
-	C.X_EVP_CIPHER_CTX_set_padding(ctx.ctx, 0)
 }
 
 func (ctx *cipherCtx) setCtrl(code, arg int) error {
