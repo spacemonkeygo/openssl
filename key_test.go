@@ -458,18 +458,4 @@ func TestMarshalEd25519(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	/*
-	if !bytes.Equal(new_der_from_der, tls_der) {
-		ioutil.WriteFile("generated", []byte(hex.Dump(new_der_from_der)), 0644)
-		ioutil.WriteFile("hardcoded", []byte(hex.Dump(tls_der)), 0644)
-		t.Fatal("invalid public key der bytes")
-	}
-
-	if !bytes.Equal(new_der_from_pem, tls_der) {
-		ioutil.WriteFile("generated", []byte(hex.Dump(new_der_from_pem)), 0644)
-		ioutil.WriteFile("hardcoded", []byte(hex.Dump(tls_der)), 0644)
-		t.Fatal("invalid public key der bytes")
-	}
-	*/
 }
