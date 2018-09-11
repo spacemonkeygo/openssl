@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"runtime"
 	"unsafe"
-	"fmt"
 )
 
 type Method *C.EVP_MD
@@ -121,7 +120,6 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 
 	if key.KeyType() == KeyTypeED25519 {
 		// do ED specific one-shot sign
-		fmt.Println("Doing ed sign")
 
 		if method != nil || len(data) == 0 {
 			return nil, errors.New("signpkcs1v15: 0-length data or non-null digest")
@@ -135,10 +133,10 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 		sig := make([]byte, 64, 64)
 		var sigblen C.ulong = 64
 		if 1 != C.X_EVP_DigestSign(ctx,
-								   ((*C.uchar)(unsafe.Pointer(&sig[0]))),
-									&sigblen,
-									(*C.uchar)(unsafe.Pointer(&data[0])),
-									C.ulong(len(data))) {
+		                           ((*C.uchar)(unsafe.Pointer(&sig[0]))),
+		                           &sigblen,
+		                           (*C.uchar)(unsafe.Pointer(&data[0])),
+		                           C.ulong(len(data))) {
 			return nil, errors.New("signpkcs1v15: failed to do one-shot signature")
 		}
 
@@ -169,22 +167,21 @@ func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 
 	if key.KeyType() == KeyTypeED25519 {
 		// do ED specific one-shot sign
-		fmt.Println("Doing ed verify")
 
 		if method != nil || len(data) == 0 || len(sig) == 0 {
-			return errors.New("Verrifypkcs1v15: 0-length data or sig or non-null digest")
+			return errors.New("verifypkcs1v15: 0-length data or sig or non-null digest")
 		}
 
 		if 1 != C.X_EVP_DigestVerifyInit(ctx, nil, nil, nil, key.key) {
-			return errors.New("Verifypkcs1v15: failed to init verify")
+			return errors.New("verifypkcs1v15: failed to init verify")
 		}
 
 		if 1 != C.X_EVP_DigestVerify(ctx,
-									((*C.uchar)(unsafe.Pointer(&sig[0]))),
-									C.ulong(len(sig)),
-									(*C.uchar)(unsafe.Pointer(&data[0])),
-									C.ulong(len(data))) {
-			return errors.New("Verifypkcs1v15: failed to do one-shot verify")
+		                             ((*C.uchar)(unsafe.Pointer(&sig[0]))),
+		                             C.ulong(len(sig)),
+		                             (*C.uchar)(unsafe.Pointer(&data[0])),
+		                             C.ulong(len(data))) {
+			return errors.New("verifypkcs1v15: failed to do one-shot verify")
 		}
 
 		return nil
