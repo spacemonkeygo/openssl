@@ -478,7 +478,7 @@ func GenerateECKey(curve EllipticCurve) (PrivateKey, error) {
 func GenerateED25519Key() (PrivateKey, error) {
 
 	// Key context
-	keyCtx := C.EVP_PKEY_CTX_new_id(C.EVP_PKEY_ED25519, nil)
+	keyCtx := C.EVP_PKEY_CTX_new_id(C.X_EVP_PKEY_ED25519, nil)
 	if keyCtx == nil {
 		return nil, errors.New("failed creating EC parameter generation context")
 	}
