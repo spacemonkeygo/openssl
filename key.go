@@ -135,12 +135,12 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 
 		// evp signatures are 64 bytes
 		sig := make([]byte, 64, 64)
-		var sigblen C.ulong = 64
+		var sigblen C.size_t = 64
 		if 1 != C.X_EVP_DigestSign(ctx,
 			((*C.uchar)(unsafe.Pointer(&sig[0]))),
 			&sigblen,
 			(*C.uchar)(unsafe.Pointer(&data[0])),
-			C.ulong(len(data))) {
+			C.size_t(len(data))) {
 			return nil, errors.New("signpkcs1v15: failed to do one-shot signature")
 		}
 
@@ -182,9 +182,9 @@ func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 
 		if 1 != C.X_EVP_DigestVerify(ctx,
 			((*C.uchar)(unsafe.Pointer(&sig[0]))),
-			C.ulong(len(sig)),
+			C.size_t(len(sig)),
 			(*C.uchar)(unsafe.Pointer(&data[0])),
-			C.ulong(len(data))) {
+			C.size_t(len(data))) {
 			return errors.New("verifypkcs1v15: failed to do one-shot verify")
 		}
 
