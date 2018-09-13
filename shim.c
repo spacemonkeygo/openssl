@@ -44,6 +44,8 @@ static int go_write_bio_puts(BIO *b, const char *str) {
  ************************************************
  */
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
+
+const int X_ED25519_SUPPORT = 1;
 int X_EVP_PKEY_ED25519 = EVP_PKEY_ED25519;
 
 int X_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -66,7 +68,10 @@ int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
 		size_t siglen, const unsigned char *tbs, size_t tbslen){
 	return EVP_DigestVerify(ctx, sigret, siglen, tbs, tbslen);
 }
+
 #else
+
+const int X_ED25519_SUPPORT = 0;
 int X_EVP_PKEY_ED25519 = EVP_PKEY_NONE;
 
 int X_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -89,6 +94,7 @@ int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
 		size_t siglen, const unsigned char *tbs, size_t tbslen){
 	return 0;
 }
+
 #endif
 
 /*
@@ -215,8 +221,6 @@ int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CI
 }
 
 #endif
-
-
 
 /*
  ************************************************
@@ -361,8 +365,6 @@ int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CI
 }
 
 #endif
-
-
 
 /*
  ************************************************

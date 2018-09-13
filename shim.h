@@ -102,6 +102,7 @@ extern BIO *X_BIO_new_write_bio();
 extern BIO *X_BIO_new_read_bio();
 
 /* EVP methods */
+extern const int X_ED25519_SUPPORT;
 extern int X_EVP_PKEY_ED25519;
 extern const EVP_MD *X_EVP_get_digestbyname(const char *name);
 extern EVP_MD_CTX *X_EVP_MD_CTX_new();

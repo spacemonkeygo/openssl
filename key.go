@@ -24,6 +24,10 @@ import (
 	"unsafe"
 )
 
+var ( // some (effectively) constants for tests to refer to
+	ed25519_support = C.X_ED25519_SUPPORT != 0
+)
+
 type Method *C.EVP_MD
 
 var (
@@ -133,10 +137,10 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 		sig := make([]byte, 64, 64)
 		var sigblen C.ulong = 64
 		if 1 != C.X_EVP_DigestSign(ctx,
-		                           ((*C.uchar)(unsafe.Pointer(&sig[0]))),
-		                           &sigblen,
-		                           (*C.uchar)(unsafe.Pointer(&data[0])),
-		                           C.ulong(len(data))) {
+			((*C.uchar)(unsafe.Pointer(&sig[0]))),
+			&sigblen,
+			(*C.uchar)(unsafe.Pointer(&data[0])),
+			C.ulong(len(data))) {
 			return nil, errors.New("signpkcs1v15: failed to do one-shot signature")
 		}
 
@@ -177,10 +181,10 @@ func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 		}
 
 		if 1 != C.X_EVP_DigestVerify(ctx,
-		                             ((*C.uchar)(unsafe.Pointer(&sig[0]))),
-		                             C.ulong(len(sig)),
-		                             (*C.uchar)(unsafe.Pointer(&data[0])),
-		                             C.ulong(len(data))) {
+			((*C.uchar)(unsafe.Pointer(&sig[0]))),
+			C.ulong(len(sig)),
+			(*C.uchar)(unsafe.Pointer(&data[0])),
+			C.ulong(len(data))) {
 			return errors.New("verifypkcs1v15: failed to do one-shot verify")
 		}
 
@@ -476,7 +480,6 @@ func GenerateECKey(curve EllipticCurve) (PrivateKey, error) {
 
 // GenerateED25519Key generates a Ed25519 key
 func GenerateED25519Key() (PrivateKey, error) {
-
 	// Key context
 	keyCtx := C.EVP_PKEY_CTX_new_id(C.X_EVP_PKEY_ED25519, nil)
 	if keyCtx == nil {
