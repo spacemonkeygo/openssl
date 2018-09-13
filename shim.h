@@ -102,6 +102,7 @@ extern BIO *X_BIO_new_write_bio();
 extern BIO *X_BIO_new_read_bio();
 
 /* EVP methods */
+extern int X_EVP_PKEY_ED25519;
 extern const EVP_MD *X_EVP_get_digestbyname(const char *name);
 extern EVP_MD_CTX *X_EVP_MD_CTX_new();
 extern void X_EVP_MD_CTX_free(EVP_MD_CTX *ctx);
@@ -122,6 +123,8 @@ extern int X_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *d, size_t cnt);
 extern int X_EVP_DigestFinal_ex(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *s);
 extern int X_EVP_SignInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 extern int X_EVP_SignUpdate(EVP_MD_CTX *ctx, const void *d, unsigned int cnt);
+extern int X_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
+extern int X_EVP_DigestSign(EVP_MD_CTX *ctx, unsigned char *sigret, size_t *siglen, const unsigned char *tbs, size_t tbslen);
 extern EVP_PKEY *X_EVP_PKEY_new(void);
 extern void X_EVP_PKEY_free(EVP_PKEY *pkey);
 extern int X_EVP_PKEY_size(EVP_PKEY *pkey);
@@ -132,6 +135,8 @@ extern int X_EVP_SignFinal(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *s, 
 extern int X_EVP_VerifyInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 extern int X_EVP_VerifyUpdate(EVP_MD_CTX *ctx, const void *d, unsigned int cnt);
 extern int X_EVP_VerifyFinal(EVP_MD_CTX *ctx, const unsigned char *sigbuf, unsigned int siglen, EVP_PKEY *pkey);
+extern int X_EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
+extern int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret, size_t siglen, const unsigned char *tbs, size_t tbslen);
 extern int X_EVP_CIPHER_block_size(EVP_CIPHER *c);
 extern int X_EVP_CIPHER_key_length(EVP_CIPHER *c);
 extern int X_EVP_CIPHER_iv_length(EVP_CIPHER *c);

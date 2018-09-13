@@ -40,6 +40,59 @@ static int go_write_bio_puts(BIO *b, const char *str) {
 
 /*
  ************************************************
+ * v1.1.1 and later implementation
+ ************************************************
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x1010100fL
+int X_EVP_PKEY_ED25519 = EVP_PKEY_ED25519;
+
+int X_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+		const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey){
+	return EVP_DigestSignInit(ctx, pctx, type, e, pkey);
+}
+
+int X_EVP_DigestSign(EVP_MD_CTX *ctx, unsigned char *sigret,
+		size_t *siglen, const unsigned char *tbs, size_t tbslen) {
+	return EVP_DigestSign(ctx, sigret, siglen, tbs, tbslen);
+}
+
+
+int X_EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+		const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey){
+	return EVP_DigestVerifyInit(ctx, pctx, type, e, pkey);
+}
+
+int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
+		size_t siglen, const unsigned char *tbs, size_t tbslen){
+	return EVP_DigestVerify(ctx, sigret, siglen, tbs, tbslen);
+}
+#else
+int X_EVP_PKEY_ED25519 = EVP_PKEY_NONE;
+
+int X_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+		const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey){
+	return 0;
+}
+
+int X_EVP_DigestSign(EVP_MD_CTX *ctx, unsigned char *sigret,
+		size_t *siglen, const unsigned char *tbs, size_t tbslen) {
+	return 0;
+}
+
+
+int X_EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+		const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey){
+	return 0;
+}
+
+int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
+		size_t siglen, const unsigned char *tbs, size_t tbslen){
+	return 0;
+}
+#endif
+
+/*
+ ************************************************
  * v1.1.X and later implementation
  ************************************************
  */

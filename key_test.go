@@ -174,6 +174,21 @@ func TestGenerateEC(t *testing.T) {
 	}
 }
 
+func TestGenerateEd25519(t *testing.T) {
+	key, err := GenerateED25519Key()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = key.MarshalPKIXPublicKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = key.MarshalPKCS1PrivateKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSign(t *testing.T) {
 	key, _ := GenerateRSAKey(1024)
 	data := []byte("the quick brown fox jumps over the lazy dog")
@@ -234,6 +249,30 @@ func TestSignEC(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	})
+}
+
+func TestSignED25519(t *testing.T) {
+	t.Parallel()
+
+	key, err := GenerateED25519Key()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("the quick brown fox jumps over the lazy dog")
+
+	t.Run("new", func(t *testing.T) {
+		t.Parallel()
+		sig, err := key.SignPKCS1v15(nil, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = key.VerifyPKCS1v15(nil, data, sig)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 	})
 }
 
@@ -351,5 +390,72 @@ func TestMarshalEC(t *testing.T) {
 		ioutil.WriteFile("generated", []byte(hex.Dump(new_der_from_pem)), 0644)
 		ioutil.WriteFile("hardcoded", []byte(hex.Dump(tls_der)), 0644)
 		t.Fatal("invalid public key der bytes")
+	}
+}
+
+func TestMarshalEd25519(t *testing.T) {
+	key, err := LoadPrivateKeyFromPEM(ed25519KeyBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := LoadCertificateFromPEM(ed25519CertBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	privateBlock, _ := pem_pkg.Decode(ed25519KeyBytes)
+	key, err = LoadPrivateKeyFromDER(privateBlock.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pem, err := cert.MarshalPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(pem, ed25519CertBytes) {
+		ioutil.WriteFile("generated", pem, 0644)
+		ioutil.WriteFile("hardcoded", ed25519CertBytes, 0644)
+		t.Fatal("invalid cert pem bytes")
+	}
+
+	pem, err = key.MarshalPKCS1PrivateKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	der, err := key.MarshalPKCS1PrivateKeyDER()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	der, err = key.MarshalPKIXPublicKeyDER()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pem, err = key.MarshalPKIXPublicKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	loaded_pubkey_from_pem, err := LoadPublicKeyFromPEM(pem)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	loaded_pubkey_from_der, err := LoadPublicKeyFromDER(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = loaded_pubkey_from_pem.MarshalPKIXPublicKeyDER()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = loaded_pubkey_from_der.MarshalPKIXPublicKeyDER()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
