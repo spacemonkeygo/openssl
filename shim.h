@@ -107,6 +107,7 @@ extern EVP_MD_CTX *X_EVP_MD_CTX_new();
 extern void X_EVP_MD_CTX_free(EVP_MD_CTX *ctx);
 extern const EVP_MD *X_EVP_md_null();
 extern const EVP_MD *X_EVP_md5();
+extern const EVP_MD *X_EVP_md4();
 extern const EVP_MD *X_EVP_sha();
 extern const EVP_MD *X_EVP_sha1();
 extern const EVP_MD *X_EVP_dss();

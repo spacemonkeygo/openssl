@@ -31,6 +31,7 @@ type EVP_MD int
 const (
 	EVP_NULL      EVP_MD = iota
 	EVP_MD5       EVP_MD = iota
+	EVP_MD4       EVP_MD = iota
 	EVP_SHA       EVP_MD = iota
 	EVP_SHA1      EVP_MD = iota
 	EVP_DSS       EVP_MD = iota
