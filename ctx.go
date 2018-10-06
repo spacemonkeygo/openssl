@@ -65,6 +65,7 @@ func newCtx(method *C.SSL_METHOD) (*Ctx, error) {
 	runtime.SetFinalizer(c, func(c *Ctx) {
 		C.SSL_CTX_free(c.ctx)
 	})
+	C.X_SSL_CTX_set_ecdh_auto(ctx, 1)
 	return c, nil
 }
 

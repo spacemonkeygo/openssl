@@ -104,6 +104,10 @@ int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
  */
 #if OPENSSL_VERSION_NUMBER >= 0x1010000fL
 
+int X_SSL_CTX_set_ecdh_auto(SSL_CTX *ctx, int onoff) {
+	return 1;
+}
+
 void X_BIO_set_data(BIO* bio, void* data) {
 	BIO_set_data(bio, data);
 }
@@ -228,6 +232,10 @@ int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CI
  ************************************************
  */
 #if OPENSSL_VERSION_NUMBER < 0x1010000fL
+
+int X_SSL_CTX_set_ecdh_auto(SSL_CTX *ctx, int onoff) {
+	return SSL_CTX_set_ecdh_auto(ctx, onoff);
+}
 
 static int x_bio_create(BIO *b) {
 	b->shutdown = 1;
