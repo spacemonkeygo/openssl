@@ -18,9 +18,11 @@ package openssl
 import "C"
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"runtime"
 	"sync"
@@ -37,12 +39,13 @@ var (
 )
 
 type Ctx struct {
-	ctx       *C.SSL_CTX
-	cert      *Certificate
-	chain     []*Certificate
-	key       PrivateKey
-	verify_cb VerifyCallback
-	sni_cb    TLSExtServernameCallback
+	ctx        *C.SSL_CTX
+	cert       *Certificate
+	chain      []*Certificate
+	key        PrivateKey
+	verify_cb  VerifyCallback
+	sni_cb     TLSExtServernameCallback
+	alpnProtos []string
 
 	ticket_store_mu sync.Mutex
 	ticket_store    *TicketStore
@@ -493,6 +496,33 @@ type TLSExtServernameCallback func(ssl *SSL) SSLTLSExtErr
 func (c *Ctx) SetTLSExtServernameCallback(sni_cb TLSExtServernameCallback) {
 	c.sni_cb = sni_cb
 	C.X_SSL_CTX_set_tlsext_servername_callback(c.ctx, (*[0]byte)(C.sni_cb))
+}
+
+//export go_alpn_cb
+func go_alpn_cb(p unsafe.Pointer, ssl *C.SSL, out **C.uchar, outLen *C.uchar, in *C.uchar, inLen C.int, arg unsafe.Pointer) SSLTLSExtErr {
+	ctx := (*Ctx)(p)
+	//see details https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_alpn_select_cb.html
+	inBytes := C.GoBytes(unsafe.Pointer(in), inLen)
+	for _, proto := range ctx.alpnProtos {
+		if len(proto) > math.MaxUint8 {
+			continue //couln't match because prefix len
+		}
+		protoLen := byte(len(proto))
+		inProto := append([]byte{protoLen}, []byte(proto)...)
+		ind := bytes.Index(inBytes, inProto)
+		if ind < 0 {
+			continue
+		}
+		*out = (*C.uchar)(unsafe.Pointer(uintptr(unsafe.Pointer(in)) + uintptr(ind+1)))
+		*outLen = C.uchar(protoLen)
+		return SSLTLSExtErrOK
+	}
+	return SSLTLSEXTErrNoAck
+}
+
+func (c *Ctx) SetAlpn(protos []string) {
+	c.alpnProtos = protos
+	C.SSL_CTX_set_alpn_select_cb(c.ctx, (*[0]byte)(C.alpn_cb), nil)
 }
 
 func (c *Ctx) SetSessionId(session_id []byte) error {

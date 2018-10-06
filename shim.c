@@ -447,6 +447,12 @@ int X_SSL_verify_cb(int ok, X509_STORE_CTX* store) {
 	return go_ssl_verify_cb_thunk(p, ok, store);
 }
 
+int alpn_cb(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *arg) {
+	SSL_CTX* ssl_ctx = SSL_get_SSL_CTX(ssl);
+	void* p = SSL_CTX_get_ex_data(ssl_ctx, get_ssl_ctx_idx());
+	return go_alpn_cb(p, ssl, (unsigned char **)out, (unsigned char *)outlen, (unsigned char *)in, inlen, arg);
+}
+
 const SSL_METHOD *X_SSLv23_method() {
 	return SSLv23_method();
 }
