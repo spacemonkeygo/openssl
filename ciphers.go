@@ -287,6 +287,9 @@ func NewDecryptionCipherCtx(c *Cipher, e *Engine, key, iv []byte) (
 }
 
 func (ctx *encryptionCipherCtx) EncryptUpdate(input []byte) ([]byte, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
 	outbuf := make([]byte, len(input)+ctx.BlockSize())
 	outlen := C.int(len(outbuf))
 	res := C.EVP_EncryptUpdate(ctx.ctx, (*C.uchar)(&outbuf[0]), &outlen,
@@ -298,6 +301,9 @@ func (ctx *encryptionCipherCtx) EncryptUpdate(input []byte) ([]byte, error) {
 }
 
 func (ctx *decryptionCipherCtx) DecryptUpdate(input []byte) ([]byte, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
 	outbuf := make([]byte, len(input)+ctx.BlockSize())
 	outlen := C.int(len(outbuf))
 	res := C.EVP_DecryptUpdate(ctx.ctx, (*C.uchar)(&outbuf[0]), &outlen,
