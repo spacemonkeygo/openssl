@@ -378,6 +378,14 @@ func (c *Conn) ConnectionState() (rv ConnectionState) {
 	return
 }
 
+func (c *Conn) AlpnSelected() string {
+	var buf *C.uchar
+	var bufLen C.uint
+	C.SSL_get0_alpn_selected(c.ssl, &buf, &bufLen)
+	protoBytes := C.GoBytes(unsafe.Pointer(buf), C.int(bufLen))
+	return string(protoBytes)
+}
+
 func (c *Conn) shutdown() func() error {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()

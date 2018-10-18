@@ -63,6 +63,7 @@ extern const SSL_METHOD *X_TLSv1_2_method();
 extern int sni_cb(SSL *ssl_conn, int *ad, void *arg);
 #endif
 extern int X_SSL_verify_cb(int ok, X509_STORE_CTX* store);
+extern int alpn_cb(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *arg);
 
 /* SSL_CTX methods */
 extern int X_SSL_CTX_new_index();
@@ -89,6 +90,7 @@ extern int X_SSL_CTX_set_tlsext_ticket_key_cb(SSL_CTX *sslctx,
 extern int X_SSL_CTX_ticket_key_cb(SSL *s, unsigned char key_name[16],
         unsigned char iv[EVP_MAX_IV_LENGTH],
         EVP_CIPHER_CTX *cctx, HMAC_CTX *hctx, int enc);
+extern int X_SSL_CTX_set_ecdh_auto(SSL_CTX *ctx, int onoff);
 
 /* BIO methods */
 extern int X_BIO_get_flags(BIO *b);

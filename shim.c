@@ -104,6 +104,10 @@ int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
  */
 #if OPENSSL_VERSION_NUMBER >= 0x1010000fL
 
+int X_SSL_CTX_set_ecdh_auto(SSL_CTX *ctx, int onoff) {
+	return 1;
+}
+
 void X_BIO_set_data(BIO* bio, void* data) {
 	BIO_set_data(bio, data);
 }
@@ -228,6 +232,10 @@ int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CI
  ************************************************
  */
 #if OPENSSL_VERSION_NUMBER < 0x1010000fL
+
+int X_SSL_CTX_set_ecdh_auto(SSL_CTX *ctx, int onoff) {
+	return SSL_CTX_set_ecdh_auto(ctx, onoff);
+}
 
 static int x_bio_create(BIO *b) {
 	b->shutdown = 1;
@@ -437,6 +445,12 @@ int X_SSL_verify_cb(int ok, X509_STORE_CTX* store) {
 	void* p = SSL_get_ex_data(ssl, get_ssl_idx());
 	// get the pointer to the go Ctx object and pass it back into the thunk
 	return go_ssl_verify_cb_thunk(p, ok, store);
+}
+
+int alpn_cb(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *arg) {
+	SSL_CTX* ssl_ctx = SSL_get_SSL_CTX(ssl);
+	void* p = SSL_CTX_get_ex_data(ssl_ctx, get_ssl_ctx_idx());
+	return go_alpn_cb(p, ssl, (unsigned char **)out, (unsigned char *)outlen, (unsigned char *)in, inlen, arg);
 }
 
 const SSL_METHOD *X_SSLv23_method() {
