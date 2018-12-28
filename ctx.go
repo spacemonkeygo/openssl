@@ -201,6 +201,22 @@ func (c *Ctx) SetEllipticCurve(curve EllipticCurve) error {
 	return nil
 }
 
+// SetSupportedEllipticCurves sets the supported elliptic curves used by the SSL context.
+func (c *Ctx) SetSupportedEllipticCurves(curves []EllipticCurve) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	clist := make([]C.int, len(curves))
+	for i, curve := range curves {
+		clist[i] = C.int(curve)
+	}
+	if int(C.X_SSL_CTX_set1_curves(c.ctx, &clist[0], C.int(len(curves)))) != 1 {
+		return errorFromErrorQueue()
+	}
+
+	return nil
+}
+
 // UseCertificate configures the context to present the given certificate to
 // peers.
 func (c *Ctx) UseCertificate(cert *Certificate) error {

@@ -562,6 +562,10 @@ int X_SSL_CTX_ticket_key_cb(SSL *s, unsigned char key_name[16],
 	return go_ticket_key_cb_thunk(p, s, key_name, iv, cctx, hctx, enc);
 }
 
+int X_SSL_CTX_set1_curves(SSL_CTX* ctx, int *clist, int clistlen) {
+    return SSL_CTX_set1_curves(ctx, clist, clistlen);
+}
+
 int X_BIO_get_flags(BIO *b) {
 	return BIO_get_flags(b);
 }

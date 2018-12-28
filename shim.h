@@ -89,6 +89,7 @@ extern int X_SSL_CTX_set_tlsext_ticket_key_cb(SSL_CTX *sslctx,
 extern int X_SSL_CTX_ticket_key_cb(SSL *s, unsigned char key_name[16],
         unsigned char iv[EVP_MAX_IV_LENGTH],
         EVP_CIPHER_CTX *cctx, HMAC_CTX *hctx, int enc);
+extern int X_SSL_CTX_set1_curves(SSL_CTX *ctx, int *clist, int clistlen);
 
 /* BIO methods */
 extern int X_BIO_get_flags(BIO *b);
