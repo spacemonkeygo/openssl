@@ -55,24 +55,24 @@ type authDecryptionCipherCtx struct {
 	*decryptionCipherCtx
 }
 
-func getGCMCipher(blocksize int) (*Cipher, error) {
+func getGCMCipher(keysize int) (*Cipher, error) {
 	var cipherptr *C.EVP_CIPHER
-	switch blocksize {
-	case 256:
+	switch keysize {
+	case 256 / 8:
 		cipherptr = C.EVP_aes_256_gcm()
-	case 192:
+	case 192 / 8:
 		cipherptr = C.EVP_aes_192_gcm()
-	case 128:
+	case 128 / 8:
 		cipherptr = C.EVP_aes_128_gcm()
 	default:
-		return nil, fmt.Errorf("unknown block size %d", blocksize)
+		return nil, fmt.Errorf("bad key size %d", keysize)
 	}
 	return &Cipher{ptr: cipherptr}, nil
 }
 
-func NewGCMEncryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
+func NewGCMEncryptionCipherCtx(e *Engine, key, iv []byte) (
 	AuthenticatedEncryptionCipherCtx, error) {
-	cipher, err := getGCMCipher(blocksize)
+	cipher, err := getGCMCipher(len(key))
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +94,9 @@ func NewGCMEncryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
 	return &authEncryptionCipherCtx{encryptionCipherCtx: ctx}, nil
 }
 
-func NewGCMDecryptionCipherCtx(blocksize int, e *Engine, key, iv []byte) (
+func NewGCMDecryptionCipherCtx(e *Engine, key, iv []byte) (
 	AuthenticatedDecryptionCipherCtx, error) {
-	cipher, err := getGCMCipher(blocksize)
+	cipher, err := getGCMCipher(len(key))
 	if err != nil {
 		return nil, err
 	}

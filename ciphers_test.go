@@ -31,13 +31,13 @@ func expectError(t *testing.T, err error, msg string) {
 }
 
 func TestBadInputs(t *testing.T) {
-	_, err := NewGCMEncryptionCipherCtx(256, nil,
+	_, err := NewGCMEncryptionCipherCtx(nil,
 		[]byte("abcdefghijklmnopqrstuvwxyz"), nil)
 	expectError(t, err, "bad key size")
-	_, err = NewGCMEncryptionCipherCtx(128, nil,
+	_, err = NewGCMEncryptionCipherCtx(nil,
 		[]byte("abcdefghijklmnopqrstuvwxyz"), nil)
 	expectError(t, err, "bad key size")
-	_, err = NewGCMEncryptionCipherCtx(200, nil,
+	_, err = NewGCMEncryptionCipherCtx(nil,
 		[]byte("abcdefghijklmnopqrstuvwxy"), nil)
 	expectError(t, err, "unknown block size")
 	c, err := GetCipherByName("AES-128-CBC")
@@ -49,9 +49,9 @@ func TestBadInputs(t *testing.T) {
 	expectError(t, err, "bad IV size")
 }
 
-func doEncryption(key, iv, aad, plaintext []byte, blocksize, bufsize int) (
+func doEncryption(key, iv, aad, plaintext []byte, bufsize int) (
 	ciphertext, tag []byte, err error) {
-	ectx, err := NewGCMEncryptionCipherCtx(blocksize, nil, key, iv)
+	ectx, err := NewGCMEncryptionCipherCtx(nil, key, iv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed making GCM encryption ctx: %s", err)
 	}
@@ -82,9 +82,9 @@ func doEncryption(key, iv, aad, plaintext []byte, blocksize, bufsize int) (
 	return cipherb.Bytes(), tag, nil
 }
 
-func doDecryption(key, iv, aad, ciphertext, tag []byte, blocksize,
+func doDecryption(key, iv, aad, ciphertext, tag []byte,
 	bufsize int) (plaintext []byte, err error) {
-	dctx, err := NewGCMDecryptionCipherCtx(blocksize, nil, key, iv)
+	dctx, err := NewGCMDecryptionCipherCtx(nil, key, iv)
 	if err != nil {
 		return nil, fmt.Errorf("Failed making GCM decryption ctx: %s", err)
 	}
@@ -129,7 +129,7 @@ func TestGCM(t *testing.T) {
 	iv := []byte("just a bunch of bytes")
 	plaintext := "Long long ago, in a land far away..."
 
-	blocksizes_to_test := []int{256, 192, 128}
+	keysizes_to_test := []int{32, 24, 16}
 
 	// best for this to have no common factors with blocksize, so that the
 	// buffering layer inside the CIPHER_CTX gets exercised
@@ -139,17 +139,15 @@ func TestGCM(t *testing.T) {
 		plaintext += "!" // make sure padding is exercised
 	}
 
-	for _, bsize := range blocksizes_to_test {
-		subkey := key[:bsize/8]
-		ciphertext, tag, err := doEncryption(subkey, iv, aad, []byte(plaintext),
-			bsize, bufsize)
+	for _, ksize := range keysizes_to_test {
+		subkey := key[:ksize]
+		ciphertext, tag, err := doEncryption(subkey, iv, aad, []byte(plaintext), bufsize)
 		if err != nil {
-			t.Fatalf("Encryption with b=%d: %s", bsize, err)
+			t.Fatalf("Encryption with k=%d: %s", ksize, err)
 		}
-		plaintext_out, err := doDecryption(subkey, iv, aad, ciphertext, tag,
-			bsize, bufsize)
+		plaintext_out, err := doDecryption(subkey, iv, aad, ciphertext, tag, bufsize)
 		if err != nil {
-			t.Fatalf("Decryption with b=%d: %s", bsize, err)
+			t.Fatalf("Decryption with k=%d: %s", ksize, err)
 		}
 		checkEqual(t, plaintext_out, plaintext)
 	}
