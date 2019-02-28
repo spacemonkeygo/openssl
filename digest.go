@@ -40,7 +40,7 @@ func GetDigestByName(name string) (*Digest, error) {
 	return &Digest{ptr: p}, nil
 }
 
-// GetDigestByName returns the Digest with the NID or nil and an error if the
+// GetDigestByNid returns the Digest with the NID or nil and an error if the
 // digest was not found.
 func GetDigestByNid(nid NID) (*Digest, error) {
 	sn, err := Nid2ShortName(nid)

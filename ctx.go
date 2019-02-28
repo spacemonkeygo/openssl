@@ -549,7 +549,7 @@ func (c *Ctx) SetTimeout(t time.Duration) time.Duration {
 	return time.Duration(prev) * time.Second
 }
 
-// Get session cache timeout.
+// GetTimeout gets session cache timeout.
 // See https://www.openssl.org/docs/ssl/SSL_CTX_set_timeout.html
 func (c *Ctx) GetTimeout() time.Duration {
 	return time.Duration(C.X_SSL_CTX_get_timeout(c.ctx)) * time.Second
@@ -561,7 +561,7 @@ func (c *Ctx) SessSetCacheSize(t int) int {
 	return int(C.X_SSL_CTX_sess_set_cache_size(c.ctx, C.long(t)))
 }
 
-// Get session cache size.
+// SessGetCacheSize gets session cache size.
 // https://www.openssl.org/docs/ssl/SSL_CTX_sess_set_cache_size.html
 func (c *Ctx) SessGetCacheSize() int {
 	return int(C.X_SSL_CTX_sess_get_cache_size(c.ctx))

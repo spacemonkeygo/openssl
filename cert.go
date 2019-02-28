@@ -311,7 +311,7 @@ func getDigestFunction(digest EVP_MD) (md *C.EVP_MD) {
 	return md
 }
 
-// Add an extension to a certificate.
+// AddExtension adds an extension to a certificate.
 // Extension constants are NID_* as found in openssl.
 func (c *Certificate) AddExtension(nid NID, value string) error {
 	issuer := c
