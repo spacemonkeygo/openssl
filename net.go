@@ -103,16 +103,7 @@ func DialTimeout(network, addr string, ctx *Ctx, flags DialFlags,
 // can be retrieved from the GetSession method on the Conn.
 func DialSession(network, addr string, ctx *Ctx, flags DialFlags,
 	session []byte) (*Conn, error) {
-	return dialSession(
-		network,
-		addr,
-		ctx,
-		flags,
-		session,
-		func(network, addr string) (net.Conn, error) {
-			return net.Dial(network, addr)
-		},
-	)
+	return dialSession(network, addr, ctx, flags, session, net.Dial)
 }
 
 // DialSessionTimeout works just like DialSessionTimeout, but with a timeout
