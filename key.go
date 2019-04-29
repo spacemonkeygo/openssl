@@ -94,6 +94,9 @@ type PrivateKey interface {
 	// Signs the data using PKCS1.15
 	SignPKCS1v15(Method, []byte) ([]byte, error)
 
+	// Signs pre-hashed data such as that which comes out of tls/crypto Signer, so OpenSSL can be used to sign instead (eg using an OpenSSL TPM engine)
+	SignPKCS1v15Hash(Method, []byte) ([]byte, error)
+
 	// MarshalPKCS1PrivateKeyPEM converts the private key to PEM-encoded PKCS1
 	// format
 	MarshalPKCS1PrivateKeyPEM() (pem_block []byte, err error)
@@ -165,11 +168,55 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 	}
 }
 
+// SignPKCS1v15Hash signs pre-hashed data
+func (key *KeyExt) SignPKCS1v15Hash(method Method, digest []byte) ([]byte, error) {
+
+	var ctx *C.EVP_PKEY_CTX
+	var ecode C.int
+
+	// Make a new key context
+	if ctx = C.EVP_PKEY_CTX_new(key.key, nil); ctx == nil {
+		ret := C.ERR_peek_last_error()
+		return nil, errors.New(fmt.Sprintf("signpkcs1v15hash: Failed to get new signing data. Error code: %d", ret))
+	}
+
+	// Free the context at the end of this function
+	defer C.EVP_PKEY_CTX_free(ctx)
+
+	// Initialise the context for signing
+	if ecode = C.EVP_PKEY_sign_init(ctx); ecode <= 0 {
+		return nil, errors.New(fmt.Sprintf("signpkcs1v15hash: Failed to initialise signing data. Error code: %d", ecode))
+	}
+
+	// Set the hashing method. Even though the data has already been hashed, the signing method needs to know the hash method
+	if ecode = C.X_EVP_PKEY_CTX_set_signature_md(ctx, method); ecode <= 0 {
+		return nil, errors.New(fmt.Sprintf("signpkcs1v15hash: Failed to set signature. Error code: %d", ecode))
+	}
+
+	// Initialise the signature
+	sig := make([]byte, C.X_EVP_PKEY_size(key.key))
+	var sigblen C.size_t
+
+	// Update the context with data to sign
+	if ecode = C.EVP_PKEY_sign(ctx,
+		nil, &sigblen, ((*C.uchar)(unsafe.Pointer(&digest[0]))), C.size_t(len(digest))); ecode != 1 {
+		return nil, errors.New(fmt.Sprintf("signpkcs1v15hash: Failed to update signature. Error code: %d", ecode))
+	}
+
+	// Sign the data
+	if ecode = C.EVP_PKEY_sign(ctx,
+		((*C.uchar)(unsafe.Pointer(&sig[0]))), &sigblen, ((*C.uchar)(unsafe.Pointer(&digest[0]))), C.size_t(len(digest))); ecode != 1 {
+		return nil, errors.New(fmt.Sprintf("signpkcs1v15hash: Failed to finalize signature. Error code: %d", ecode))
+	}
+
+	return sig[:sigblen], nil
+}
+
 func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 	ctx := C.X_EVP_MD_CTX_new()
 	defer C.X_EVP_MD_CTX_free(ctx)
 
-	if key.KeyType() == KeyTypeED25519 {
+	If key.KeyType() == KeyTypeED25519 {
 		// do ED specific one-shot sign
 
 		if method != nil || len(data) == 0 || len(sig) == 0 {

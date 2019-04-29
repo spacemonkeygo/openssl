@@ -768,3 +768,8 @@ long X_X509_get_version(const X509 *x) {
 int X_X509_set_version(X509 *x, long version) {
 	return X509_set_version(x, version);
 }
+
+int X_EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
+    return EVP_PKEY_CTX_set_signature_md(ctx, md);
+}
+
