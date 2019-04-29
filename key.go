@@ -345,19 +345,22 @@ func LoadPrivateKeyFromPEM(pem_block []byte) (PrivateKey, error) {
 }
 
 // LoadPrivateKeyFromPEMForEngine loads the PEM formatted data that will be sent to the OpenSSL Engine
-func LoadPrivateKeyFromPEMForEngine(engine *Engine, pemFile string) (PrivateKey, error) {
+func LoadPrivateKeyFromPEMForEngine(engine *Engine, id string) (PrivateKey, error) {
 
-        if len(pemFile) == 0 {
-                return nil, errors.New("LoadPrivateKeyFromPEMForEngine: PEM file name not supplied")
+	// id is a reference for the openssl engine to use in whatever it needs to to find the private key.
+	// For example, for a TPM engine, this could be the full path and name of the file that holds PEM data that the
+	// TPM library can use to reference the private key in the TPM
+        if len(id) == 0 {
+                return nil, errors.New("LoadPrivateKeyFromPEMForEngine: Private Key ID not supplied")
         }
 
         var key *C.EVP_PKEY
 
-        fname := C.CString(pemFile)
-        defer C.free(unsafe.Pointer(fname))
+        pkid := C.CString(id)
+        defer C.free(unsafe.Pointer(pkid))
 
         // The PEM file will bw loaded by the engine library
-        key = C.X_ENGINE_load_private_key(engine.e, fname, nil, nil)
+        key = C.X_ENGINE_load_private_key(engine.e, pkid, nil, nil)
 
         p := &pKey{key: key}
         runtime.SetFinalizer(p, func(p *pKey) {
