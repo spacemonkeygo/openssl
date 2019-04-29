@@ -773,3 +773,7 @@ int X_EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
     return EVP_PKEY_CTX_set_signature_md(ctx, md);
 }
 
+EVP_PKEY *X_ENGINE_load_private_key(ENGINE *e, const char *key_id, UI_METHOD *ui_method, void *callback_data) {
+    return ENGINE_load_private_key(e, key_id, ui_method, callback_data);
+}
+

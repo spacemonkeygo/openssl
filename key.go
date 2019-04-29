@@ -19,6 +19,7 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"runtime"
 	"unsafe"
@@ -169,7 +170,7 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 }
 
 // SignPKCS1v15Hash signs pre-hashed data
-func (key *KeyExt) SignPKCS1v15Hash(method Method, digest []byte) ([]byte, error) {
+func (key *pKey) SignPKCS1v15Hash(method Method, digest []byte) ([]byte, error) {
 
 	var ctx *C.EVP_PKEY_CTX
 	var ecode C.int
@@ -216,7 +217,7 @@ func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 	ctx := C.X_EVP_MD_CTX_new()
 	defer C.X_EVP_MD_CTX_free(ctx)
 
-	If key.KeyType() == KeyTypeED25519 {
+	if key.KeyType() == KeyTypeED25519 {
 		// do ED specific one-shot sign
 
 		if method != nil || len(data) == 0 || len(sig) == 0 {
@@ -341,6 +342,28 @@ func LoadPrivateKeyFromPEM(pem_block []byte) (PrivateKey, error) {
 		C.X_EVP_PKEY_free(p.key)
 	})
 	return p, nil
+}
+
+// LoadPrivateKeyFromPEMForEngine loads the PEM formatted data that will be sent to the OpenSSL Engine
+func LoadPrivateKeyFromPEMForEngine(engine *Engine, pemFile string) (PrivateKey, error) {
+
+        if len(pemFile) == 0 {
+                return nil, errors.New("LoadPrivateKeyFromPEMForEngine: PEM file name not supplied")
+        }
+
+        var key *C.EVP_PKEY
+
+        fname := C.CString(pemFile)
+        defer C.free(unsafe.Pointer(fname))
+
+        // The PEM file will bw loaded by the engine library
+        key = C.X_ENGINE_load_private_key(engine.e, fname, nil, nil)
+
+        p := &pKey{key: key}
+        runtime.SetFinalizer(p, func(p *pKey) {
+                C.X_EVP_PKEY_free(p.key)
+        })
+        return p, nil
 }
 
 // LoadPrivateKeyFromPEMWithPassword loads a private key from a PEM-encoded block.
@@ -549,3 +572,4 @@ func GenerateED25519Key() (PrivateKey, error) {
 	})
 	return p, nil
 }
+
