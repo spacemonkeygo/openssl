@@ -85,6 +85,9 @@ type PublicKey interface {
 	// `KeyType() == KeyTypeRSA2` would both have `BaseType() == KeyTypeRSA`.
 	BaseType() NID
 
+	// Equal compares the key with the passed in key.
+	Equal(key PublicKey) bool
+
 	evpPKey() *C.EVP_PKEY
 }
 
@@ -108,6 +111,10 @@ type pKey struct {
 }
 
 func (key *pKey) evpPKey() *C.EVP_PKEY { return key.key }
+
+func (key *pKey) Equal(other PublicKey) bool {
+	return C.EVP_PKEY_cmp(key.key, other.evpPKey()) == 1
+}
 
 func (key *pKey) KeyType() NID {
 	return NID(C.EVP_PKEY_id(key.key))
