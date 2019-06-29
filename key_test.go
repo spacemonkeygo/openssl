@@ -36,6 +36,10 @@ func TestMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if !key.Equal(key) {
+		t.Fatal("key not equal to itself")
+	}
+
 	privateBlock, _ := pem_pkg.Decode(keyBytes)
 	key, err = LoadPrivateKeyFromDER(privateBlock.Bytes)
 	if err != nil {
