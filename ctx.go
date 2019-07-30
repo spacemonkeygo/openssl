@@ -298,8 +298,7 @@ func (s *CertificateStore) AddCertificate(cert *Certificate) error {
 }
 
 type CertificateStoreCtx struct {
-	ctx     *C.X509_STORE_CTX
-	ssl_ctx *Ctx
+	ctx *C.X509_STORE_CTX
 }
 
 func (self *CertificateStoreCtx) VerifyResult() VerifyResult {

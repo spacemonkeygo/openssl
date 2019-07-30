@@ -48,3 +48,10 @@ func EngineById(name string) (*Engine, error) {
 	})
 	return e, nil
 }
+
+func engineRef(e *Engine) *C.ENGINE {
+	if e == nil {
+		return nil
+	}
+	return e.e
+}
