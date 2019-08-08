@@ -17,63 +17,27 @@ package openssl
 // #include "shim.h"
 import "C"
 
-import (
-	"errors"
-	"runtime"
-	"unsafe"
-)
-
 type MD5Hash struct {
-	ctx    *C.EVP_MD_CTX
-	engine *Engine
+	*DigestComputer
 }
 
 func NewMD5Hash() (*MD5Hash, error) { return NewMD5HashWithEngine(nil) }
 
 func NewMD5HashWithEngine(e *Engine) (*MD5Hash, error) {
-	hash := &MD5Hash{engine: e}
-	hash.ctx = C.X_EVP_MD_CTX_new()
-	if hash.ctx == nil {
-		return nil, errors.New("openssl: md5: unable to allocate ctx")
-	}
-	runtime.SetFinalizer(hash, func(hash *MD5Hash) { hash.Close() })
-	if err := hash.Reset(); err != nil {
+	dc, err := NewDigestComputerWithEngine(e, EVP_MD5)
+	if err != nil {
 		return nil, err
 	}
-	return hash, nil
-}
-
-func (s *MD5Hash) Close() {
-	if s.ctx != nil {
-		C.X_EVP_MD_CTX_free(s.ctx)
-		s.ctx = nil
-	}
-}
-
-func (s *MD5Hash) Reset() error {
-	if 1 != C.X_EVP_DigestInit_ex(s.ctx, C.X_EVP_md5(), engineRef(s.engine)) {
-		return errors.New("openssl: md5: cannot init digest ctx")
-	}
-	return nil
-}
-
-func (s *MD5Hash) Write(p []byte) (n int, err error) {
-	if len(p) == 0 {
-		return 0, nil
-	}
-	if 1 != C.X_EVP_DigestUpdate(s.ctx, unsafe.Pointer(&p[0]),
-		C.size_t(len(p))) {
-		return 0, errors.New("openssl: md5: cannot update digest")
-	}
-	return len(p), nil
+	return &MD5Hash{DigestComputer: dc}, nil
 }
 
 func (s *MD5Hash) Sum() (result [16]byte, err error) {
-	if 1 != C.X_EVP_DigestFinal_ex(s.ctx,
-		(*C.uchar)(unsafe.Pointer(&result[0])), nil) {
-		return result, errors.New("openssl: md5: cannot finalize ctx")
+	sum, err := s.DigestComputer.Sum()
+	if err != nil {
+		return
 	}
-	return result, s.Reset()
+	copy(result[:], sum)
+	return
 }
 
 func MD5(data []byte) (result [16]byte, err error) {

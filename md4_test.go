@@ -120,9 +120,17 @@ func benchmarkMD4(b *testing.B, length int64, fn md4func) {
 }
 
 func BenchmarkMD4Large_openssl(b *testing.B) {
-	benchmarkMD4(b, 1024*1024, func(buf []byte) { MD4(buf) })
+	benchmarkMD4(b, 1024*1024, func(buf []byte) {
+		if _, err := MD4(buf); err != nil {
+			b.Fatal(err)
+		}
+	})
 }
 
 func BenchmarkMD4Small_openssl(b *testing.B) {
-	benchmarkMD4(b, 1, func(buf []byte) { MD4(buf) })
+	benchmarkMD4(b, 1, func(buf []byte) {
+		if _, err := MD4(buf); err != nil {
+			b.Fatal(err)
+		}
+	})
 }
