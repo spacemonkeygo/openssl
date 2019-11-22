@@ -6,6 +6,7 @@
  */
 
 #include <openssl/x509.h>
+#include "hostname.h"
 
 #ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 
@@ -270,6 +271,30 @@ static int do_check_string(ASN1_STRING *a, int cmp_type, equal_fn equal,
 		return rv;
 		}
 	}
+
+void list_x509_san(X509 *x, SanList *list)
+{
+    STACK_OF(GENERAL_NAME) *gens = NULL;
+    gens = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
+    if (gens)
+        {
+        int i;
+        int gens_length=sk_GENERAL_NAME_num(gens);
+        list->length = gens_length;
+        list->sans = (char**)realloc(list->sans, gens_length*sizeof(char*));
+        for (i = 0; i < gens_length; i++)
+            {
+            unsigned char *astr;
+            GENERAL_NAME *gen;
+            ASN1_STRING *cstr;
+
+            gen = sk_GENERAL_NAME_value(gens, i);
+            ASN1_STRING_to_UTF8(&astr, gen->d.dNSName);
+            list->sans[i] = astr;
+            }
+        GENERAL_NAMES_free(gens);
+        }
+}
 
 static int do_x509_check(X509 *x, const unsigned char *chk, size_t chklen,
 					unsigned int flags, int check_type)
