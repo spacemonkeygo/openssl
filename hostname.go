@@ -18,6 +18,7 @@ package openssl
 #include <openssl/ssl.h>
 #include <openssl/conf.h>
 #include <openssl/x509.h>
+#include "hostname.h"
 
 #ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 #define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT	0x1
@@ -29,6 +30,7 @@ extern int X509_check_email(X509 *x, const unsigned char *chk, size_t chklen,
     unsigned int flags);
 extern int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
 		unsigned int flags);
+extern void list_x509_san(X509 *x, SanList *sans);
 #endif
 */
 import "C"
@@ -36,6 +38,7 @@ import "C"
 import (
 	"errors"
 	"net"
+	"reflect"
 	"unsafe"
 )
 
@@ -49,6 +52,25 @@ const (
 	AlwaysCheckSubject CheckFlags = C.X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 	NoWildcards        CheckFlags = C.X509_CHECK_FLAG_NO_WILDCARDS
 )
+
+func (c *Certificate) ListSanDns() []string {
+	list := C.SanList{}
+	list.sans = (**C.char)(C.malloc(100))
+	defer C.free(unsafe.Pointer(list.sans))
+	C.list_x509_san(c.x, &list)
+
+	var str []string
+	var pbuf []*C.char
+	header := (*reflect.SliceHeader)(unsafe.Pointer(&pbuf))
+	header.Cap = int(list.length)
+	header.Len = int(list.length)
+	header.Data = uintptr(unsafe.Pointer(list.sans))
+	for _, i := range pbuf {
+		str = append(str, C.GoString(i))
+	}
+
+	return str
+}
 
 // CheckHost checks that the X509 certificate is signed for the provided
 // host name. See http://www.openssl.org/docs/crypto/X509_check_host.html for
