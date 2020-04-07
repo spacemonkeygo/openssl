@@ -28,6 +28,9 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 #include <openssl/ec.h>
+#include <openssl/pkcs7.h>
+#include <openssl/objects.h>
+#include <openssl/obj_mac.h>
 
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
