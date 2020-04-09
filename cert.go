@@ -19,7 +19,6 @@ import "C"
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"math/big"
 	"runtime"
@@ -478,14 +477,14 @@ func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) {
 
 // VerifyTrustAndGetIssuerCertificate takes a chained PEM file, loading all certificates into a Store,
 // and verifies trust for the certificate.  The issuing certificate from the chained PEM file is returned.
-func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certificate, error) {
+func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certificate, VerifyResult, error) {
 	cert_ctx, err := NewCertificateStore()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	err = cert_ctx.LoadCertificatesFromPEM(ca_file)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	// TODO: implement custom callback/verification logic?
 	// C.X509_STORE_set_verify_cb(cert_ctx, (*[0]byte)(C.X_SSL_CTX_test_verify_cb))
@@ -502,25 +501,26 @@ func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certi
 
 	store := C.X509_STORE_CTX_new()
 	if store == nil {
-		return nil, errors.New("failed to create new X509_STORE_CTX")
+		return nil, 0, errors.New("failed to create new X509_STORE_CTX")
 	}
 	defer C.X509_STORE_CTX_free(store)
 
 	C.X509_STORE_set_flags(cert_ctx.store, 0)
 	rc := C.X509_STORE_CTX_init(store, cert_ctx.store, c.x, nil)
 	if rc == 0 {
-		return nil, errors.New("unable to init X509_STORE_CTX")
+		return nil, 0, errors.New("unable to init X509_STORE_CTX")
 	}
 
 	i := C.X509_verify_cert(store)
+	verifyResult := Ok
 	if i != 1 {
-		errCode := C.X509_STORE_CTX_get_error(store)
-		return nil, fmt.Errorf("verification of certificate failed - errorCode %v", errCode)
+		verifyResult = VerifyResult(C.X509_STORE_CTX_get_error(store))
 	}
+
 	// TODO: figure out how to access current_issuer
 	// issuer := &Certificate{x: store.current_issuer}
 	// runtime.SetFinalizer(cert, func(cert *Certificate) {
 	// 	C.X509_free(cert.x)
 	// })
-	return nil, nil
+	return nil, verifyResult, nil
 }
