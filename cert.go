@@ -458,24 +458,22 @@ func LoadCertificatesFromPKCS7(der_block []byte) (*PKCS7, error) {
 		certs = signedAndEnveloped.cert
 	}
 
-	ret.Certs = loadCertificateStack(certs)
+	ret.loadCertificateStack(certs)
 	return ret, nil
 }
 
-// loadCertificateStack loads up a stack of x509 certificates and returns them.
-func loadCertificateStack(sk *C.struct_stack_st_X509) (rv []*Certificate) {
+// loadCertificateStack loads up a stack of x509 certificates into the PKCS7 struct.
+func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) {
 	sk_num := int(C.X_sk_X509_num(sk))
-	rv = make([]*Certificate, 0, sk_num)
+	p.Certs = make([]*Certificate, 0, sk_num)
 	for i := 0; i < sk_num; i++ {
 		x := C.X_sk_X509_value(sk, C.int(i))
 
-		cert := &Certificate{x: x}
-		runtime.SetFinalizer(cert, func(cert *Certificate) {
-			C.X509_free(cert.x)
-		})
-		rv = append(rv, cert)
+		// ref holds on to the underlying connection memory so we don't need to
+		// worry about incrementing refcounts manually or freeing the X509
+		cert := &Certificate{x: x, ref: p}
+		p.Certs = append(p.Certs, cert)
 	}
-	return rv
 }
 
 // VerifyTrustAndGetIssuerCertificate takes a chained PEM file, loading all certificates into a Store,
