@@ -486,18 +486,6 @@ func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certi
 	if err != nil {
 		return nil, 0, err
 	}
-	// TODO: implement custom callback/verification logic?
-	// C.X509_STORE_set_verify_cb(cert_ctx, (*[0]byte)(C.X_SSL_CTX_test_verify_cb))
-
-	// TODO: load masterList from file?
-	// lookup := C.X509_STORE_add_lookup(cert_ctx.store, C.X509_LOOKUP_file())
-	// if lookup == nil {
-	// 	return nil, errors.New("unable to add lookup to store")
-	// }
-	// rc := C.X509_LOOKUP_ctrl(lookup, C.X509_L_FILE_LOAD, C.CString("/Users/etammaru/go/src/github.mitekcloud.local/engineering/nfcsvc/masterList.pem"), C.long(C.X509_FILETYPE_PEM), nil)
-	// if rc == 0 {
-	// 	return nil, errors.New("unable to load master list")
-	// }
 
 	store := C.X509_STORE_CTX_new()
 	if store == nil {
@@ -512,15 +500,15 @@ func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certi
 	}
 
 	i := C.X509_verify_cert(store)
+	var issuer *Certificate
 	verifyResult := Ok
 	if i != 1 {
 		verifyResult = VerifyResult(C.X509_STORE_CTX_get_error(store))
+	} else {
+		issuer = &Certificate{x: C.X509_STORE_CTX_get0_current_issuer(store)}
+		runtime.SetFinalizer(issuer, func(cert *Certificate) {
+			C.X509_free(cert.x)
+		})
 	}
-
-	// TODO: figure out how to access current_issuer
-	// issuer := &Certificate{x: store.current_issuer}
-	// runtime.SetFinalizer(cert, func(cert *Certificate) {
-	// 	C.X509_free(cert.x)
-	// })
-	return nil, verifyResult, nil
+	return issuer, verifyResult, nil
 }
