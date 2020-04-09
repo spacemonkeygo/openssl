@@ -19,6 +19,7 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"runtime"
@@ -414,8 +415,13 @@ func (c *Certificate) SetVersion(version X509_Version) error {
 	return nil
 }
 
+type PKCS7 struct {
+	p7    *C.PKCS7
+	Certs []*Certificate
+}
+
 // LoadCertificatesFromPKCS7 loads certificates from a DER-encoded pkcs7.
-func LoadCertificatesFromPKCS7(der_block []byte) ([]*Certificate, error) {
+func LoadCertificatesFromPKCS7(der_block []byte) (*PKCS7, error) {
 	if len(der_block) == 0 {
 		return nil, errors.New("empty der block")
 	}
@@ -431,7 +437,12 @@ func LoadCertificatesFromPKCS7(der_block []byte) ([]*Certificate, error) {
 	if p7 == nil {
 		return nil, errors.New("failed reading pkcs7 data")
 	}
-	defer C.PKCS7_free(p7)
+	ret := &PKCS7{
+		p7: p7,
+	}
+	runtime.SetFinalizer(ret, func(pkcs7 *PKCS7) {
+		C.PKCS7_free(pkcs7.p7)
+	})
 
 	var certs *C.struct_stack_st_X509
 	i := C.OBJ_obj2nid(p7._type)
@@ -447,7 +458,7 @@ func LoadCertificatesFromPKCS7(der_block []byte) ([]*Certificate, error) {
 		certs = signedAndEnveloped.cert
 	}
 
-	ret := loadCertificateStack(certs)
+	ret.Certs = loadCertificateStack(certs)
 	return ret, nil
 }
 
@@ -465,4 +476,53 @@ func loadCertificateStack(sk *C.struct_stack_st_X509) (rv []*Certificate) {
 		rv = append(rv, cert)
 	}
 	return rv
+}
+
+// VerifyTrustAndGetIssuerCertificate takes a chained PEM file, loading all certificates into a Store,
+// and verifies trust for the certificate.  The issuing certificate from the chained PEM file is returned.
+func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certificate, error) {
+	cert_ctx, err := NewCertificateStore()
+	if err != nil {
+		return nil, err
+	}
+	err = cert_ctx.LoadCertificatesFromPEM(ca_file)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: implement custom callback/verification logic?
+	// C.X509_STORE_set_verify_cb(cert_ctx, (*[0]byte)(C.X_SSL_CTX_test_verify_cb))
+
+	// TODO: load masterList from file?
+	// lookup := C.X509_STORE_add_lookup(cert_ctx.store, C.X509_LOOKUP_file())
+	// if lookup == nil {
+	// 	return nil, errors.New("unable to add lookup to store")
+	// }
+	// rc := C.X509_LOOKUP_ctrl(lookup, C.X509_L_FILE_LOAD, C.CString("/Users/etammaru/go/src/github.mitekcloud.local/engineering/nfcsvc/masterList.pem"), C.long(C.X509_FILETYPE_PEM), nil)
+	// if rc == 0 {
+	// 	return nil, errors.New("unable to load master list")
+	// }
+
+	store := C.X509_STORE_CTX_new()
+	if store == nil {
+		return nil, errors.New("failed to create new X509_STORE_CTX")
+	}
+	defer C.X509_STORE_CTX_free(store)
+
+	C.X509_STORE_set_flags(cert_ctx.store, 0)
+	rc := C.X509_STORE_CTX_init(store, cert_ctx.store, c.x, nil)
+	if rc == 0 {
+		return nil, errors.New("unable to init X509_STORE_CTX")
+	}
+
+	i := C.X509_verify_cert(store)
+	if i != 1 {
+		errCode := C.X509_STORE_CTX_get_error(store)
+		return nil, fmt.Errorf("verification of certificate failed - errorCode %v", errCode)
+	}
+	// TODO: figure out how to access current_issuer
+	// issuer := &Certificate{x: store.current_issuer}
+	// runtime.SetFinalizer(cert, func(cert *Certificate) {
+	// 	C.X509_free(cert.x)
+	// })
+	return nil, nil
 }
