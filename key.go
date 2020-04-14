@@ -14,6 +14,7 @@
 
 package openssl
 
+// #include "openssl/engine.h"
 // #include "shim.h"
 import "C"
 
@@ -105,6 +106,7 @@ type PrivateKey interface {
 
 type pKey struct {
 	key *C.EVP_PKEY
+	ref interface{}
 }
 
 func (key *pKey) evpPKey() *C.EVP_PKEY { return key.key }
@@ -351,6 +353,24 @@ func LoadPrivateKeyFromDER(der_block []byte) (PrivateKey, error) {
 func LoadPrivateKeyFromPEMWidthPassword(pem_block []byte, password string) (
 	PrivateKey, error) {
 	return LoadPrivateKeyFromPEMWithPassword(pem_block, password)
+}
+
+// LoadPrivateKeyFromEngine loads a private key from an engine.
+func LoadPrivateKeyFromEngine(e *Engine, keyID string) (PrivateKey, error) {
+	cKeyID := C.CString(keyID)
+	defer C.free(unsafe.Pointer(cKeyID))
+
+	key := C.ENGINE_load_private_key(e.e, cKeyID, nil, nil)
+	if key == nil {
+		return nil, errors.New("failed reading private key from engine")
+	}
+	// ref holds on to the underlying engine so it won't be freed
+	// up while private key is still in use.
+	p := &pKey{key: key, ref: e}
+	runtime.SetFinalizer(p, func(p *pKey) {
+		C.X_EVP_PKEY_free(p.key)
+	})
+	return p, nil
 }
 
 // LoadPublicKeyFromPEM loads a public key from a PEM-encoded block.
