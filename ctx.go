@@ -244,6 +244,7 @@ type CertificateStore struct {
 	// for GC
 	ctx   *Ctx
 	certs []*Certificate
+	crls  []*CRL
 }
 
 // Allocate a new, empty CertificateStore
@@ -275,6 +276,22 @@ func (s *CertificateStore) LoadCertificatesFromPEM(data []byte) error {
 	return nil
 }
 
+// Parse a chained PEM file, loading all crls into the Store.
+func (s *CertificateStore) LoadCRLsFromPEM(data []byte) error {
+	pems := SplitPEM(data)
+	for _, pem := range pems {
+		crl, err := LoadCRLFromPEM(pem)
+		if err != nil {
+			return err
+		}
+		err = s.AddCRL(crl)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetCertificateStore returns the context's certificate store that will be
 // used for peer validation.
 func (c *Ctx) GetCertificateStore() *CertificateStore {
@@ -292,6 +309,18 @@ func (s *CertificateStore) AddCertificate(cert *Certificate) error {
 	defer runtime.UnlockOSThread()
 	s.certs = append(s.certs, cert)
 	if int(C.X509_STORE_add_cert(s.store, cert.x)) != 1 {
+		return errorFromErrorQueue()
+	}
+	return nil
+}
+
+// AddCRL adds the CRL (certificate-revocation-list) to the
+// the given CertificateStore to be used with the verification flag X509_V_FLAG_CRL_CHECK.
+func (s *CertificateStore) AddCRL(crl *CRL) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	s.crls = append(s.crls, crl)
+	if int(C.X509_STORE_add_crl(s.store, crl.x)) != 1 {
 		return errorFromErrorQueue()
 	}
 	return nil

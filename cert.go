@@ -477,7 +477,8 @@ func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) {
 
 // VerifyTrustAndGetIssuerCertificate takes a chained PEM file, loading all certificates into a Store,
 // and verifies trust for the certificate.  The issuing certificate from the chained PEM file is returned.
-func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certificate, VerifyResult, error) {
+// If crls are given, then crl_check is also performed by loading all crls into the Store.
+func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte, crls ...[]byte) (*Certificate, VerifyResult, error) {
 	cert_ctx, err := NewCertificateStore()
 	if err != nil {
 		return nil, 0, err
@@ -486,6 +487,12 @@ func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certi
 	if err != nil {
 		return nil, 0, err
 	}
+	for _, crl := range crls {
+		err = cert_ctx.LoadCRLsFromPEM(crl)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
 
 	store := C.X509_STORE_CTX_new()
 	if store == nil {
@@ -493,7 +500,11 @@ func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certi
 	}
 	defer C.X509_STORE_CTX_free(store)
 
-	C.X509_STORE_set_flags(cert_ctx.store, 0)
+	flags := C.ulong(0)
+	if len(crls) > 0 {
+		flags = C.X509_V_FLAG_CRL_CHECK
+	}
+	C.X509_STORE_set_flags(cert_ctx.store, flags)
 	rc := C.X509_STORE_CTX_init(store, cert_ctx.store, c.x, nil)
 	if rc == 0 {
 		return nil, 0, errors.New("unable to init X509_STORE_CTX")
@@ -504,8 +515,11 @@ func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte) (*Certi
 	verifyResult := Ok
 	if i != 1 {
 		verifyResult = VerifyResult(C.X509_STORE_CTX_get_error(store))
-	} else {
-		issuer = &Certificate{x: C.X509_STORE_CTX_get0_current_issuer(store)}
+	}
+
+	currentIssuer := C.X509_STORE_CTX_get0_current_issuer(store)
+	if currentIssuer != nil {
+		issuer = &Certificate{x: currentIssuer}
 		runtime.SetFinalizer(issuer, func(cert *Certificate) {
 			C.X509_free(cert.x)
 		})
