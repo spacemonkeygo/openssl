@@ -475,54 +475,45 @@ func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) {
 	}
 }
 
-// VerifyTrustAndGetIssuerCertificate takes a chained PEM file, loading all certificates into a Store,
-// and verifies trust for the certificate.  The issuing certificate from the chained PEM file is returned.
-// If crls are given, then crl_check is also performed by loading all crls into the Store.
-func (c *Certificate) VerifyTrustAndGetIssuerCertificate(ca_file []byte, crls ...[]byte) (*Certificate, VerifyResult, error) {
-	cert_ctx, err := NewCertificateStore()
-	if err != nil {
-		return nil, 0, err
-	}
-	err = cert_ctx.LoadCertificatesFromPEM(ca_file)
-	if err != nil {
-		return nil, 0, err
-	}
-	for _, crl := range crls {
-		err = cert_ctx.LoadCRLsFromPEM(crl)
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-
-	store := C.X509_STORE_CTX_new()
-	if store == nil {
+// VerifyTrustAndGetIssuerCertificate takes a CertificateStore and verifies trust for the certificate.
+// The issuing certificate from the CertificateStore is returned if found.
+func (c *Certificate) VerifyTrustAndGetIssuerCertificate(store *CertificateStore, crlCheck bool) (*Certificate, VerifyResult, error) {
+	storeCtx := C.X509_STORE_CTX_new()
+	if storeCtx == nil {
 		return nil, 0, errors.New("failed to create new X509_STORE_CTX")
 	}
-	defer C.X509_STORE_CTX_free(store)
+	defer C.X509_STORE_CTX_free(storeCtx)
 
 	flags := C.ulong(0)
-	if len(crls) > 0 {
+	if crlCheck {
 		flags = C.X509_V_FLAG_CRL_CHECK
 	}
-	C.X509_STORE_set_flags(cert_ctx.store, flags)
-	rc := C.X509_STORE_CTX_init(store, cert_ctx.store, c.x, nil)
+	C.X509_STORE_set_flags(store.store, flags)
+	rc := C.X509_STORE_CTX_init(storeCtx, store.store, c.x, nil)
 	if rc == 0 {
 		return nil, 0, errors.New("unable to init X509_STORE_CTX")
 	}
 
-	i := C.X509_verify_cert(store)
+	i := C.X509_verify_cert(storeCtx)
 	var issuer *Certificate
 	verifyResult := Ok
 	if i != 1 {
-		verifyResult = VerifyResult(C.X509_STORE_CTX_get_error(store))
+		verifyResult = VerifyResult(C.X509_STORE_CTX_get_error(storeCtx))
 	}
 
-	currentIssuer := C.X509_STORE_CTX_get0_current_issuer(store)
+	currentIssuer := C.X509_STORE_CTX_get0_current_issuer(storeCtx)
 	if currentIssuer != nil {
-		issuer = &Certificate{x: currentIssuer}
-		runtime.SetFinalizer(issuer, func(cert *Certificate) {
-			C.X509_free(cert.x)
-		})
+		// need to clone the issuer cert so that it is not cleaned up when C.X509_STORE_CTX_free is called
+		ic := &Certificate{x: currentIssuer}
+		data, err := ic.MarshalPEM()
+		if err != nil {
+			return nil, 0, errors.New("error copying issuer cert")
+		}
+		issuer, err = LoadCertificateFromPEM(data)
+		if err != nil {
+			return nil, 0, errors.New("error loading issuer cert")
+		}
 	}
+
 	return issuer, verifyResult, nil
 }
