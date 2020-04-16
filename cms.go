@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-// VerifyAndGetSignedDataFromPKCS7 verifies a CMS SignedData structure from a DER-encolded PKCS7,
+// VerifyAndGetSignedDataFromPKCS7 verifies a CMS SignedData structure from a DER-encoded PKCS7,
 // and returns the signed content if the verification is successful.
 // It does not verify the signing certificates.
 func VerifyAndGetSignedDataFromPKCS7(der []byte) ([]byte, error) {
