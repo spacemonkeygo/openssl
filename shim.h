@@ -32,6 +32,7 @@
 #include <openssl/objects.h>
 #include <openssl/obj_mac.h>
 #include <openssl/cms.h>
+#include <openssl/asn1.h>
 
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
