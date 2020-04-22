@@ -457,22 +457,31 @@ func LoadCertificatesFromPKCS7(der_block []byte) (*PKCS7, error) {
 		certs = signedAndEnveloped.cert
 	}
 
-	ret.loadCertificateStack(certs)
+	err := ret.loadCertificateStack(certs)
+	if err != nil {
+		return nil, err
+	}
 	return ret, nil
 }
 
 // loadCertificateStack loads up a stack of x509 certificates into the PKCS7 struct.
-func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) {
+func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) error {
 	sk_num := int(C.X_sk_X509_num(sk))
 	p.Certs = make([]*Certificate, 0, sk_num)
 	for i := 0; i < sk_num; i++ {
 		x := C.X_sk_X509_value(sk, C.int(i))
 
-		// ref holds on to the underlying connection memory so we don't need to
-		// worry about incrementing refcounts manually or freeing the X509
-		cert := &Certificate{x: x, ref: p}
+		// add a ref
+		if 1 != C.X_X509_add_ref(x) {
+			return errors.New("unable to add ref for X509")
+		}
+		cert := &Certificate{x: x}
+		runtime.SetFinalizer(cert, func(cert *Certificate) {
+			C.X509_free(cert.x)
+		})
 		p.Certs = append(p.Certs, cert)
 	}
+	return nil
 }
 
 // VerifyTrustAndGetIssuerCertificate takes a CertificateStore and verifies trust for the certificate.
