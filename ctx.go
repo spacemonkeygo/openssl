@@ -326,6 +326,37 @@ func (s *CertificateStore) AddCRL(crl *CRL) error {
 	return nil
 }
 
+type VerifyFlags int
+
+const (
+	CBIssuerCheck      VerifyFlags = C.X509_V_FLAG_CB_ISSUER_CHECK
+	UseCheckTime       VerifyFlags = C.X509_V_FLAG_USE_CHECK_TIME
+	CRLCheck           VerifyFlags = C.X509_V_FLAG_CRL_CHECK
+	CRLCheckAll        VerifyFlags = C.X509_V_FLAG_CRL_CHECK_ALL
+	IgnoreCritical     VerifyFlags = C.X509_V_FLAG_IGNORE_CRITICAL
+	X509Strict         VerifyFlags = C.X509_V_FLAG_X509_STRICT
+	AllowProxyCerts    VerifyFlags = C.X509_V_FLAG_ALLOW_PROXY_CERTS
+	PolicyCheck        VerifyFlags = C.X509_V_FLAG_POLICY_CHECK
+	ExplicitPolicy     VerifyFlags = C.X509_V_FLAG_EXPLICIT_POLICY
+	InhibitAny         VerifyFlags = C.X509_V_FLAG_INHIBIT_ANY
+	InhibitMap         VerifyFlags = C.X509_V_FLAG_INHIBIT_MAP
+	NotifyPolicy       VerifyFlags = C.X509_V_FLAG_NOTIFY_POLICY
+	ExtendedCRLSupport VerifyFlags = C.X509_V_FLAG_EXTENDED_CRL_SUPPORT
+	UseDeltas          VerifyFlags = C.X509_V_FLAG_USE_DELTAS
+	CheckSSSignature   VerifyFlags = C.X509_V_FLAG_CHECK_SS_SIGNATURE
+	TrustedFirst       VerifyFlags = C.X509_V_FLAG_TRUSTED_FIRST
+	SuiteB128LOSOnly   VerifyFlags = C.X509_V_FLAG_SUITEB_128_LOS_ONLY
+	SuiteB192LOS       VerifyFlags = C.X509_V_FLAG_SUITEB_192_LOS
+	SuiteB128LOS       VerifyFlags = C.X509_V_FLAG_SUITEB_128_LOS
+	PartialChain       VerifyFlags = C.X509_V_FLAG_PARTIAL_CHAIN
+	NoAltChains        VerifyFlags = C.X509_V_FLAG_NO_ALT_CHAINS
+)
+
+func (s *CertificateStore) SetFlags(flags VerifyFlags) {
+	cflags := C.ulong(flags)
+	C.X509_STORE_set_flags(s.store, cflags)
+}
+
 type CertificateStoreCtx struct {
 	ctx     *C.X509_STORE_CTX
 	ssl_ctx *Ctx
