@@ -486,18 +486,13 @@ func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) error {
 
 // VerifyTrustAndGetIssuerCertificate takes a CertificateStore and verifies trust for the certificate.
 // The issuing certificate from the CertificateStore is returned if found.
-func (c *Certificate) VerifyTrustAndGetIssuerCertificate(store *CertificateStore, crlCheck bool) (*Certificate, VerifyResult, error) {
+func (c *Certificate) VerifyTrustAndGetIssuerCertificate(store *CertificateStore) (*Certificate, VerifyResult, error) {
 	storeCtx := C.X509_STORE_CTX_new()
 	if storeCtx == nil {
 		return nil, 0, errors.New("failed to create new X509_STORE_CTX")
 	}
 	defer C.X509_STORE_CTX_free(storeCtx)
 
-	flags := C.ulong(0)
-	if crlCheck {
-		flags = C.X509_V_FLAG_CRL_CHECK
-	}
-	C.X509_STORE_set_flags(store.store, flags)
 	rc := C.X509_STORE_CTX_init(storeCtx, store.store, c.x, nil)
 	if rc == 0 {
 		return nil, 0, errors.New("unable to init X509_STORE_CTX")
