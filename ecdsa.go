@@ -21,27 +21,12 @@ import (
 	"unsafe"
 )
 
-/// VerifyECDSASignature verifies data valid against an ECDSA signature and ECDSA Public Key
-/// - Parameter publicKey: The OpenSSL EVP_PKEY ECDSA key
-/// - Parameter signature: The ECDSA signature to verify
-/// - Parameter data: The data used to generate the signature
-/// - Returns: True if the signature was verified
+// VerifyECDSASignature verifies data valid against an ECDSA signature and ECDSA Public Key
+// - Parameter publicKey: The OpenSSL EVP_PKEY ECDSA public key in DER format
+// - Parameter signature: The ECDSA signature to verify in DER format
+// - Parameter data: The raw data used to generate the signature
+// - Returns: True if the signature was verified
 func VerifyECDSASignature(publicKey, signature, data []byte) (bool, error) {
-	ecsig := C.ECDSA_SIG_new()
-	defer C.ECDSA_SIG_free(ecsig)
-	sigData := signature
-
-	C.BN_bin2bn((*C.uchar)(&sigData[0]), 32, ecsig.r)
-	C.BN_bin2bn((*C.uchar)(&sigData[32]), 32, ecsig.s)
-
-	sigSize := C.i2d_ECDSA_SIG(ecsig, nil)
-
-	derBytes := (*C.uchar)(C.malloc(C.size_t(sigSize)))
-	defer C.free(unsafe.Pointer(derBytes))
-
-	// ignoring result, because it is the same as sigSize
-	C.i2d_ECDSA_SIG(ecsig, &derBytes)
-
 	// read EC Public Key
 	inf := C.BIO_new(C.BIO_s_mem())
 	if inf == nil {
@@ -72,32 +57,22 @@ func VerifyECDSASignature(publicKey, signature, data []byte) (bool, error) {
 	defer C.EVP_PKEY_free(pemKey)
 
 	keyType := C.EVP_PKEY_base_id(pemKey)
-	// TODO: support other key types such as RSA, DSA, etc.
 	if keyType != C.EVP_PKEY_EC {
 		return false, errors.New("public key is incorrect type")
 	}
 
-	ctx := &C.EVP_MD_CTX{}
-	ctxPointer := unsafe.Pointer(ctx)
-	bmd := C.BIO_new(C.BIO_f_md())
-	defer C.BIO_free(bmd)
-
-	if C.BIO_ctrl(bmd, C.BIO_C_GET_MD_CTX, 0, ctxPointer) != 1 {
-		return false, errors.New("error getting context")
-	}
-
-	nRes := C.EVP_DigestVerifyInit(ctx, nil, nil, nil, pemKey)
+	// run digest verify with public key in pem format, signature in der format, and data in raw format
+	mdctx := C.EVP_MD_CTX_new()
+	nRes := C.EVP_DigestVerifyInit(mdctx, nil, nil, nil, pemKey)
 	if nRes != 1 {
 		return false, errors.New("unable to init digest verify")
 	}
-	defer C.EVP_MD_CTX_cleanup(ctx)
-
-	nRes = C.EVP_DigestUpdate(ctx, unsafe.Pointer((*C.uchar)(&data[0])), C.size_t(len(data)))
+	defer C.EVP_MD_CTX_free(mdctx)
+	nRes = C.EVP_DigestUpdate(mdctx, unsafe.Pointer((*C.uchar)(&data[0])), C.size_t(len(data)))
 	if nRes != 1 {
 		return false, errors.New("unable to update digest")
 	}
-
-	nRes = C.EVP_DigestVerifyFinal(ctx, derBytes, C.size_t(sigSize))
+	nRes = C.EVP_DigestVerifyFinal(mdctx, (*C.uchar)(&signature[0]), C.size_t(len(signature)))
 	if nRes != 1 {
 		return false, nil
 	}
