@@ -737,6 +737,10 @@ int X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid) {
 	return EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, nid);
 }
 
+int X_EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int pad) {
+	return EVP_PKEY_CTX_set_rsa_padding(ctx, pad);
+}
+
 size_t X_HMAC_size(const HMAC_CTX *e) {
 	return HMAC_size(e);
 }
