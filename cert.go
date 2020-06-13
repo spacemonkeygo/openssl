@@ -333,7 +333,9 @@ func (c *Certificate) AddExtension(nid NID, value string) error {
 
 // AddCustomExtension add custom extenstion to the certificate.
 func (c *Certificate) AddCustomExtension(nid NID, value []byte) error {
-	if int(C.add_custom_ext(c.x, C.int(nid), (*C.char)(C.CBytes(value)), C.int(len(value)))) == 0 {
+	val := (*C.char)(C.CBytes(value))
+	defer C.free(unsafe.Pointer(val))
+	if int(C.add_custom_ext(c.x, C.int(nid), val, C.int(len(value)))) == 0 {
 		return errors.New("Unable to add extension")
 	}
 	return nil
@@ -426,12 +428,5 @@ func (c *Certificate) SetVersion(version X509_Version) error {
 func (c *Certificate) GetExtensionValue(nid NID) []byte {
 	dataLength := C.int(0)
 	val := C.get_extention(c.x, C.int(nid), &dataLength)
-	return charToBytes(val, int(dataLength))
-}
-
-// charToBytes converts c unisgned char to golang bytes
-func charToBytes(src *C.uchar, sz int) []byte {
-	dest := make([]byte, sz)
-	copy(dest, (*(*[1024]byte)(unsafe.Pointer(src)))[:sz:sz])
-	return dest
+	return C.GoBytes(unsafe.Pointer(val), dataLength)
 }
