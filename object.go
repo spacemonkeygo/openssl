@@ -19,6 +19,6 @@ import "C"
 
 // CreateObjectIdentifier creates ObjectIdentifier and returns NID for the created
 // ObjectIdentifier
-func CreateObjectIdentifier(oid string, shortName string, longName string) int {
-	return int(C.OBJ_create(C.CString(oid), C.CString(shortName), C.CString(longName)))
+func CreateObjectIdentifier(oid string, shortName string, longName string) NID {
+	return NID(C.OBJ_create(C.CString(oid), C.CString(shortName), C.CString(longName)))
 }
