@@ -79,3 +79,37 @@ func VerifyECDSASignature(publicKey, signature, data []byte) (bool, error) {
 
 	return true, nil
 }
+
+// GetECPublicKeyBitSize returns the bit size of an EC public key, using EVP_PKEY_bits.
+func GetECPublicKeyBitSize(publicKey []byte) (int, error) {
+	inf := C.BIO_new(C.BIO_s_mem())
+	if inf == nil {
+		return 0, errors.New("failed allocating input buffer")
+	}
+	defer C.BIO_free(inf)
+	_, err := asAnyBio(inf).Write(publicKey)
+	if err != nil {
+		return 0, err
+	}
+
+	eckey := C.d2i_EC_PUBKEY_bio(inf, nil)
+	if eckey == nil {
+		return 0, errors.New("failed to load ec public key")
+	}
+	defer C.EC_KEY_free(eckey)
+
+	out := C.BIO_new(C.BIO_s_mem())
+	if out == nil {
+		return 0, errors.New("failed allocating output buffer")
+	}
+	defer C.BIO_free(out)
+	i := C.PEM_write_bio_EC_PUBKEY(out, eckey)
+	if i != 1 {
+		return 0, errors.New("failed to write bio ec public key")
+	}
+	pemKey := C.PEM_read_bio_PUBKEY(out, nil, nil, nil)
+	defer C.EVP_PKEY_free(pemKey)
+
+	bitSize := C.EVP_PKEY_bits(pemKey)
+	return int(bitSize), nil
+}
