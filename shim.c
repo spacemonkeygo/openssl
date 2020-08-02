@@ -405,6 +405,14 @@ void X_OPENSSL_free(void *ref) {
 	OPENSSL_free(ref);
 }
 
+void X_SSL_set_security_level(SSL *ssl, int level) {
+ SSL_set_security_level(ssl, level);
+}
+
+int X_SSL_get_security_level(SSL *ssl) {
+ return SSL_get_security_level(ssl);
+}
+
 long X_SSL_set_options(SSL* ssl, long options) {
 	return SSL_set_options(ssl, options);
 }
