@@ -48,3 +48,11 @@ func LoadCRLFromPEM(pem_block []byte) (*CRL, error) {
 	})
 	return x, nil
 }
+
+func (c *CRL) GetIssuer() (*Name, error) {
+	n := C.X509_CRL_get_issuer(c.x)
+	if n == nil {
+		return nil, errors.New("failed to get issuer")
+	}
+	return &Name{name: n}, nil
+}
