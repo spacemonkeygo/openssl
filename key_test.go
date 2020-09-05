@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	pem_pkg "encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"testing"
 )
@@ -250,6 +251,20 @@ func TestSignEC(t *testing.T) {
 			t.Fatal(err)
 		}
 		err = key.VerifyPKCS1v15(SHA512_Method, data, sig)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("sha256WithExternalHash", func(t *testing.T) {
+		t.Parallel()
+		h, _ := SHA256(data)
+		sig, err := key.SignHash(h[:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println("Signature: ", sig)
+		err = key.VerifyHash(h[:], sig)
 		if err != nil {
 			t.Fatal(err)
 		}

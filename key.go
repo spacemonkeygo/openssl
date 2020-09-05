@@ -64,6 +64,8 @@ type PublicKey interface {
 	// Verifies the data signature using PKCS1.15
 	VerifyPKCS1v15(method Method, data, sig []byte) error
 
+	VerifyHash([]byte, []byte) error
+
 	// MarshalPKIXPublicKeyPEM converts the public key to PEM-encoded PKIX
 	// format
 	MarshalPKIXPublicKeyPEM() (pem_block []byte, err error)
@@ -101,6 +103,8 @@ type PrivateKey interface {
 	// MarshalPKCS1PrivateKeyDER converts the private key to DER-encoded PKCS1
 	// format
 	MarshalPKCS1PrivateKeyDER() (der_block []byte, err error)
+
+	SignHash([]byte) ([]byte, error)
 }
 
 type pKey struct {
@@ -115,6 +119,28 @@ func (key *pKey) KeyType() NID {
 
 func (key *pKey) BaseType() NID {
 	return NID(C.EVP_PKEY_base_id(key.key))
+}
+
+func (key *pKey) SignHash(digest []byte) ([]byte, error) {
+	ctx := C.X_EVP_PKEY_CTX_new(key.key, nil)
+	defer C.X_EVP_PKEY_CTX_free(ctx)
+
+	if C.X_EVP_PKEY_sign_init(ctx) <= 0 {
+		return nil, errors.New("Error initializing context")
+	}
+
+	sig := make([]byte, 72, 72)
+	var sigblen C.size_t = 72
+
+	e := C.X_EVP_PKEY_sign(ctx,
+		((*C.uchar)(unsafe.Pointer(&sig[0]))),
+		&sigblen,
+		(*C.uchar)(unsafe.Pointer(&digest[0])),
+		C.size_t(len(digest)))
+	if e <= 0 {
+		return nil, errors.New("Error signining")
+	}
+	return sig[:sigblen], nil
 }
 
 func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
@@ -163,6 +189,23 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 		}
 		return sig[:sigblen], nil
 	}
+}
+
+func (key *pKey) VerifyHash(digest, sig []byte) error {
+	ctx := C.X_EVP_PKEY_CTX_new(key.key, nil)
+	defer C.X_EVP_PKEY_CTX_free(ctx)
+
+	if C.X_EVP_PKEY_verify_init(ctx) <= 0 {
+		return errors.New("Error initializing context")
+	}
+	if 1 != C.X_EVP_PKEY_verify(ctx,
+		((*C.uchar)(unsafe.Pointer(&sig[0]))),
+		C.size_t(len(sig)),
+		(*C.uchar)(unsafe.Pointer(&digest[0])),
+		C.size_t(len(digest))) {
+		return errors.New("Signing Failed")
+	}
+	return nil
 }
 
 func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
