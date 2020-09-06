@@ -58,6 +58,17 @@ int X_EVP_DigestSign(EVP_MD_CTX *ctx, unsigned char *sigret,
 	return EVP_DigestSign(ctx, sigret, siglen, tbs, tbslen);
 }
 
+int X_EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {
+	return EVP_PKEY_sign_init(ctx);
+}
+
+int X_EVP_PKEY_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen, const unsigned char *tbs, size_t tbslen) {
+	return EVP_PKEY_sign(ctx, sig, siglen, tbs, tbslen);
+}
+
+unsigned long X_ERR_get_error(){
+	return ERR_get_error();
+}
 
 int X_EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
 		const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey){
@@ -68,6 +79,15 @@ int X_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
 		size_t siglen, const unsigned char *tbs, size_t tbslen){
 	return EVP_DigestVerify(ctx, sigret, siglen, tbs, tbslen);
 }
+
+int X_EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx) {
+	return EVP_PKEY_verify_init(ctx);
+}
+
+int X_EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig, size_t siglen, const unsigned char *tbs, size_t tbslen) {
+	return EVP_PKEY_verify(ctx, sig, siglen, tbs, tbslen);
+}
+
 
 #else
 
@@ -116,8 +136,16 @@ EVP_MD_CTX* X_EVP_MD_CTX_new() {
 	return EVP_MD_CTX_new();
 }
 
+EVP_PKEY_CTX* X_EVP_PKEY_CTX_new(EVP_PKEY *key, ENGINE *e){
+	return EVP_PKEY_CTX_new(key, e);
+}
+
 void X_EVP_MD_CTX_free(EVP_MD_CTX* ctx) {
 	EVP_MD_CTX_free(ctx);
+}
+
+void X_EVP_PKEY_CTX_free(EVP_PKEY_CTX* ctx) {
+	EVP_PKEY_CTX_free(ctx);
 }
 
 static int x_bio_create(BIO *b) {
