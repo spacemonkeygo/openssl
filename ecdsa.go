@@ -25,8 +25,9 @@ import (
 // - Parameter publicKey: The OpenSSL EVP_PKEY ECDSA public key in DER format
 // - Parameter signature: The ECDSA signature to verify in DER format
 // - Parameter data: The raw data used to generate the signature
+// - Parameter digest: The name of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512, ripemd160
 // - Returns: True if the signature was verified
-func VerifyECDSASignature(publicKey, signature, data []byte) (bool, error) {
+func VerifyECDSASignature(publicKey, signature, data []byte, digest string) (bool, error) {
 	// read EC Public Key
 	inf := C.BIO_new(C.BIO_s_mem())
 	if inf == nil {
@@ -61,9 +62,27 @@ func VerifyECDSASignature(publicKey, signature, data []byte) (bool, error) {
 		return false, errors.New("public key is incorrect type")
 	}
 
+	var digestType *C.EVP_MD
+	switch digest {
+	case "sha1":
+		digestType = C.EVP_sha1()
+	case "sha224":
+		digestType = C.EVP_sha224()
+	case "sha256":
+		digestType = C.EVP_sha256()
+	case "sha384":
+		digestType = C.EVP_sha384()
+	case "sha512":
+		digestType = C.EVP_sha512()
+	case "ripemd160":
+		digestType = C.EVP_ripemd160()
+	default:
+		return false, errors.New("unsupported digest value")
+	}
+
 	// run digest verify with public key in pem format, signature in der format, and data in raw format
 	mdctx := C.EVP_MD_CTX_new()
-	nRes := C.EVP_DigestVerifyInit(mdctx, nil, nil, nil, pemKey)
+	nRes := C.EVP_DigestVerifyInit(mdctx, nil, digestType, nil, pemKey)
 	if nRes != 1 {
 		return false, errors.New("unable to init digest verify")
 	}
