@@ -81,7 +81,7 @@ func VerifyRecoverRSASignature(publicKey, signature []byte) ([]byte, error) {
 // - Parameter publicKey: The OpenSSL EVP_PKEY public key in DER format
 // - Parameter signature: The signature to verify in DER format
 // - Parameter data: The data used to generate the signature
-// - Parameter digestType: The type of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512, ripemd160, rsassapss
+// - Parameter digestType: The type of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512, ripemd160
 // - Parameter pkeyopt: A map of any algorithm specific control operations in string form
 // - Returns: True if the signature was verified
 func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pkeyopt map[string]string) (bool, error) {
