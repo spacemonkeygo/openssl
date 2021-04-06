@@ -18,7 +18,7 @@ package openssl
 import "C"
 import (
 	"errors"
-	"strings"
+	"fmt"
 	"unsafe"
 )
 
@@ -81,26 +81,12 @@ func VerifyRecoverRSASignature(publicKey, signature []byte) ([]byte, error) {
 // - Parameter publicKey: The OpenSSL EVP_PKEY public key in DER format
 // - Parameter signature: The signature to verify in DER format
 // - Parameter data: The data used to generate the signature
-// - Parameter digest: The name of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512, ripemd160, rsassapss
+// - Parameter digestType: The type of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512, ripemd160, rsassapss
+// - Parameter pkeyopt: A map of any algorithm specific control operations in string form
 // - Returns: True if the signature was verified
-func VerifyRSASignature(publicKey, signature, data []byte, digest string) (bool, error) {
-	digest = strings.ToLower(digest)
-	digestName := "sha256"	
-	switch {
-	case strings.Contains(digest, "sha1"):
-		digestName = "sha1"
-	case strings.Contains(digest, "sha224"):
-		digestName = "sha224"
-	case strings.Contains(digest, "sha256"), strings.Contains(digest, "rsassapss"):
-		digestName = "sha256"
-	case strings.Contains(digest, "sha384"):
-		digestName= "sha384"
-	case strings.Contains(digest, "sha512"):
-		digestName = "sha512"
-	case strings.Contains(digest, "ripemd160"):
-		digestName = "ripemd160"
-	}
-	md, err := GetDigestByName(digestName)
+func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pkeyopt map[string]string) (bool, error) {
+	
+	md, err := GetDigestByName(digestType)
 	if err != nil {
 		return false, err
 	}
@@ -133,12 +119,11 @@ func VerifyRSASignature(publicKey, signature, data []byte, digest string) (bool,
 		return false, errors.New("unable to init digest verify")
 	}
 
-	if strings.Contains(digestName, "rsassapss") {
-		if C.X_EVP_PKEY_CTX_ctrl_str(ctx, C.CString("rsa_padding_mode"), C.CString("pss") ) <= 0 {
-			return false, errors.New("failed to set rsa padding mode")
-		}
-		if C.X_EVP_PKEY_CTX_ctrl_str(ctx, C.CString("rsa_pss_saltlen"), C.CString("auto")) <= 0 {
-			return false, errors.New("failed to set rsa pss saltlen")
+	if pkeyopt != nil && len(pkeyopt) > 0 {
+		for k, v := range pkeyopt {
+			if C.X_EVP_PKEY_CTX_ctrl_str(ctx, C.CString(k), C.CString(v)) <= 0 {
+				return false, fmt.Errorf("failed to set %s", k)
+			}
 		}
 	}
 
