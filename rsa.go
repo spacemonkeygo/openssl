@@ -18,6 +18,7 @@ package openssl
 import "C"
 import (
 	"errors"
+	"fmt"
 	"unsafe"
 )
 
@@ -74,4 +75,67 @@ func VerifyRecoverRSASignature(publicKey, signature []byte) ([]byte, error) {
 	}
 	recoveredBytes := C.GoBytes(unsafe.Pointer(rout), C.int(routlen))
 	return recoveredBytes, nil
+}
+
+// VerifyRSASignature verifies that a signature is valid for some data and a Public Key
+// - Parameter publicKey: The OpenSSL EVP_PKEY public key in DER format
+// - Parameter signature: The signature to verify in DER format
+// - Parameter data: The data used to generate the signature
+// - Parameter digestType: The type of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512, ripemd160
+// - Parameter pkeyopt: A map of any algorithm specific control operations in string form
+// - Returns: True if the signature was verified
+func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pkeyopt map[string]string) (bool, error) {
+	
+	md, err := GetDigestByName(digestType)
+	if err != nil {
+		return false, err
+	}
+
+	inf := C.BIO_new(C.BIO_s_mem())
+	if inf == nil {
+		return false, errors.New("failed allocating input buffer")
+	}
+	defer C.BIO_free(inf)
+	_, err = asAnyBio(inf).Write(publicKey)
+	if err != nil {
+		return false, err
+	}
+	pubKey := C.d2i_PUBKEY_bio(inf, nil)
+	if pubKey == nil {
+		return false, errors.New("failed to load public key")
+	}
+	defer C.EVP_PKEY_free(pubKey)
+	ctx := C.EVP_PKEY_CTX_new(pubKey, nil)
+	if ctx == nil {
+		return false, errors.New("failed to setup context")
+	}
+	defer C.EVP_PKEY_CTX_free(ctx)
+
+	mdctx := C.EVP_MD_CTX_new()
+	defer C.EVP_MD_CTX_free(mdctx)
+
+	nRes := C.EVP_DigestVerifyInit(mdctx, &ctx, md.ptr, nil, pubKey)
+	if nRes != 1 {
+		return false, errors.New("unable to init digest verify")
+	}
+
+	if pkeyopt != nil && len(pkeyopt) > 0 {
+		for k, v := range pkeyopt {
+			if C.X_EVP_PKEY_CTX_ctrl_str(ctx, C.CString(k), C.CString(v)) <= 0 {
+				return false, fmt.Errorf("failed to set %s", k)
+			}
+		}
+	}
+
+	nRes = C.EVP_DigestUpdate(mdctx, unsafe.Pointer((*C.uchar)(&data[0])), C.size_t(len(data)))
+	if nRes != 1 {
+		return false, errors.New("unable to update digest")
+	}
+
+	nRes = C.EVP_DigestVerifyFinal(mdctx, (*C.uchar)(&signature[0]), C.size_t(len(signature)))
+	if nRes != 1 {
+		return false, nil
+	}
+
+	return true, nil
 }

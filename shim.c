@@ -741,6 +741,10 @@ int X_EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int pad) {
 	return EVP_PKEY_CTX_set_rsa_padding(ctx, pad);
 }
 
+int X_EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value) {
+	return EVP_PKEY_CTX_ctrl_str(ctx, type, value);
+}
+
 size_t X_HMAC_size(const HMAC_CTX *e) {
 	return HMAC_size(e);
 }
