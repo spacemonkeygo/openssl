@@ -85,7 +85,7 @@ func VerifyRecoverRSASignature(publicKey, signature []byte) ([]byte, error) {
 // - Parameter pkeyopt: A map of any algorithm specific control operations in string form
 // - Returns: True if the signature was verified
 func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pkeyopt map[string]string) (bool, error) {
-	
+
 	md, err := GetDigestByName(digestType)
 	if err != nil {
 		return false, err
@@ -120,10 +120,29 @@ func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pk
 	}
 
 	if pkeyopt != nil && len(pkeyopt) > 0 {
-		for k, v := range pkeyopt {
-			if C.X_EVP_PKEY_CTX_ctrl_str(ctx, C.CString(k), C.CString(v)) <= 0 {
-				return false, fmt.Errorf("failed to set %s", k)
+		// This is a convenience function for calling X_EVP_PKEY_CTX_ctrl_str. The _Ctype_struct_evp_pkey_ctx_st type is not
+		// exposed, but ctx can be captured in a local function like this.
+		setKeyOpt := func(pkeyopt map[string]string, k string) error {
+			v, ok := pkeyopt[k]
+			if !ok {
+				return nil
 			}
+			ck := C.CString(k)
+			defer C.free(unsafe.Pointer(ck))
+			cv := C.CString(v)
+			defer C.free(unsafe.Pointer(cv))
+			if C.X_EVP_PKEY_CTX_ctrl_str(ctx, ck, cv) <= 0 {
+				return fmt.Errorf("failed to set %s", k)
+			}
+			return nil
+		}
+
+		// Set RSA padding mode if it exists. Order matters; mode must be set before salt length.
+		if err := setKeyOpt(pkeyopt, "rsa_padding_mode"); err != nil {
+			return false, err
+		}
+		if err := setKeyOpt(pkeyopt, "rsa_pss_saltlen"); err != nil {
+			return false, err
 		}
 	}
 
