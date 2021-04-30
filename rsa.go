@@ -22,6 +22,11 @@ import (
 	"unsafe"
 )
 
+var pkeyoptSkip = []string{
+	"rsa_padding_mode",
+	"rsa_pss_saltlen",
+}
+
 // VerifyRecoverRSASignature takes a DER encoded RSA public key and a raw signature
 // (assuming no padding currently) and returns the recoverable part of the signed data.
 // This follows the example shown here: https://www.openssl.org/docs/man1.1.1/man3/EVP_PKEY_verify_recover.html
@@ -149,6 +154,16 @@ func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pk
 				}
 			}
 		}
+
+		// Fallback to make sure all pkeyopt get processed. Skips any keys found in pkeyoptSkip.
+		for k := range pkeyopt {
+			if contains(pkeyoptSkip, k) {
+				continue
+			}
+			if err := setKeyOpt(pkeyopt, k); err != nil {
+				return false, err
+			}
+		}
 	}
 
 	nRes = C.EVP_DigestUpdate(mdctx, unsafe.Pointer((*C.uchar)(&data[0])), C.size_t(len(data)))
@@ -162,4 +177,13 @@ func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pk
 	}
 
 	return true, nil
+}
+
+func contains(items []string, s string) bool {
+	for _, v := range items {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
