@@ -137,12 +137,17 @@ func VerifyRSASignature(publicKey, signature, data []byte, digestType string, pk
 			return nil
 		}
 
-		// Set RSA padding mode if it exists. Order matters; mode must be set before salt length.
-		if err := setKeyOpt(pkeyopt, "rsa_padding_mode"); err != nil {
-			return false, err
-		}
-		if err := setKeyOpt(pkeyopt, "rsa_pss_saltlen"); err != nil {
-			return false, err
+		// Set RSA padding mode and salt length if they exist. Order matters; mode must be set before salt length.
+		if rsaPaddingMode, ok := pkeyopt["rsa_padding_mode"]; ok {
+			if err := setKeyOpt(pkeyopt, "rsa_padding_mode"); err != nil {
+				return false, err
+			}
+			switch rsaPaddingMode {
+			case "pss":
+				if err := setKeyOpt(pkeyopt, "rsa_pss_saltlen"); err != nil {
+					return false, err
+				}
+			}
 		}
 	}
 
