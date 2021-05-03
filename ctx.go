@@ -244,6 +244,7 @@ type CertificateStore struct {
 	// for GC
 	ctx   *Ctx
 	certs []*Certificate
+	crls  []*CRL
 }
 
 // Allocate a new, empty CertificateStore
@@ -275,6 +276,22 @@ func (s *CertificateStore) LoadCertificatesFromPEM(data []byte) error {
 	return nil
 }
 
+// Parse a chained PEM file, loading all crls into the Store.
+func (s *CertificateStore) LoadCRLsFromPEM(data []byte) error {
+	pems := SplitPEM(data)
+	for _, pem := range pems {
+		crl, err := LoadCRLFromPEM(pem)
+		if err != nil {
+			return err
+		}
+		err = s.AddCRL(crl)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetCertificateStore returns the context's certificate store that will be
 // used for peer validation.
 func (c *Ctx) GetCertificateStore() *CertificateStore {
@@ -295,6 +312,49 @@ func (s *CertificateStore) AddCertificate(cert *Certificate) error {
 		return errorFromErrorQueue()
 	}
 	return nil
+}
+
+// AddCRL adds the CRL (certificate-revocation-list) to the
+// the given CertificateStore to be used with the verification flag X509_V_FLAG_CRL_CHECK.
+func (s *CertificateStore) AddCRL(crl *CRL) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	s.crls = append(s.crls, crl)
+	if int(C.X509_STORE_add_crl(s.store, crl.x)) != 1 {
+		return errorFromErrorQueue()
+	}
+	return nil
+}
+
+type VerifyFlags int
+
+const (
+	CBIssuerCheck      VerifyFlags = C.X509_V_FLAG_CB_ISSUER_CHECK
+	UseCheckTime       VerifyFlags = C.X509_V_FLAG_USE_CHECK_TIME
+	CRLCheck           VerifyFlags = C.X509_V_FLAG_CRL_CHECK
+	CRLCheckAll        VerifyFlags = C.X509_V_FLAG_CRL_CHECK_ALL
+	IgnoreCritical     VerifyFlags = C.X509_V_FLAG_IGNORE_CRITICAL
+	X509Strict         VerifyFlags = C.X509_V_FLAG_X509_STRICT
+	AllowProxyCerts    VerifyFlags = C.X509_V_FLAG_ALLOW_PROXY_CERTS
+	PolicyCheck        VerifyFlags = C.X509_V_FLAG_POLICY_CHECK
+	ExplicitPolicy     VerifyFlags = C.X509_V_FLAG_EXPLICIT_POLICY
+	InhibitAny         VerifyFlags = C.X509_V_FLAG_INHIBIT_ANY
+	InhibitMap         VerifyFlags = C.X509_V_FLAG_INHIBIT_MAP
+	NotifyPolicy       VerifyFlags = C.X509_V_FLAG_NOTIFY_POLICY
+	ExtendedCRLSupport VerifyFlags = C.X509_V_FLAG_EXTENDED_CRL_SUPPORT
+	UseDeltas          VerifyFlags = C.X509_V_FLAG_USE_DELTAS
+	CheckSSSignature   VerifyFlags = C.X509_V_FLAG_CHECK_SS_SIGNATURE
+	TrustedFirst       VerifyFlags = C.X509_V_FLAG_TRUSTED_FIRST
+	SuiteB128LOSOnly   VerifyFlags = C.X509_V_FLAG_SUITEB_128_LOS_ONLY
+	SuiteB192LOS       VerifyFlags = C.X509_V_FLAG_SUITEB_192_LOS
+	SuiteB128LOS       VerifyFlags = C.X509_V_FLAG_SUITEB_128_LOS
+	PartialChain       VerifyFlags = C.X509_V_FLAG_PARTIAL_CHAIN
+	NoAltChains        VerifyFlags = C.X509_V_FLAG_NO_ALT_CHAINS
+)
+
+func (s *CertificateStore) SetFlags(flags VerifyFlags) {
+	cflags := C.ulong(flags)
+	C.X509_STORE_set_flags(s.store, cflags)
 }
 
 type CertificateStoreCtx struct {
