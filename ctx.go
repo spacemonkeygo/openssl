@@ -127,7 +127,7 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 
 	certs := SplitPEM(cert_bytes)
 	if len(certs) == 0 {
-		return nil, fmt.Errorf("No PEM certificate found in '%s'", cert_file)
+		return nil, fmt.Errorf("no PEM certificate found in '%s'", cert_file)
 	}
 	first, certs := certs[0], certs[1:]
 	cert, err := LoadCertificateFromPEM(first)
@@ -190,7 +190,7 @@ func (c *Ctx) SetEllipticCurve(curve EllipticCurve) error {
 
 	k := C.EC_KEY_new_by_curve_name(C.int(curve))
 	if k == nil {
-		return errors.New("Unknown curve")
+		return errors.New("unknown curve")
 	}
 	defer C.EC_KEY_free(k)
 
@@ -302,12 +302,12 @@ type CertificateStoreCtx struct {
 	ssl_ctx *Ctx
 }
 
-func (self *CertificateStoreCtx) VerifyResult() VerifyResult {
-	return VerifyResult(C.X509_STORE_CTX_get_error(self.ctx))
+func (csc *CertificateStoreCtx) VerifyResult() VerifyResult {
+	return VerifyResult(C.X509_STORE_CTX_get_error(csc.ctx))
 }
 
-func (self *CertificateStoreCtx) Err() error {
-	code := C.X509_STORE_CTX_get_error(self.ctx)
+func (csc *CertificateStoreCtx) Err() error {
+	code := C.X509_STORE_CTX_get_error(csc.ctx)
 	if code == C.X509_V_OK {
 		return nil
 	}
@@ -315,19 +315,19 @@ func (self *CertificateStoreCtx) Err() error {
 		C.GoString(C.X509_verify_cert_error_string(C.long(code))))
 }
 
-func (self *CertificateStoreCtx) Depth() int {
-	return int(C.X509_STORE_CTX_get_error_depth(self.ctx))
+func (csc *CertificateStoreCtx) Depth() int {
+	return int(C.X509_STORE_CTX_get_error_depth(csc.ctx))
 }
 
-// the certicate returned is only valid for the lifetime of the underlying
+// the certificate returned is only valid for the lifetime of the underlying
 // X509_STORE_CTX
-func (self *CertificateStoreCtx) GetCurrentCert() *Certificate {
-	x509 := C.X509_STORE_CTX_get_current_cert(self.ctx)
+func (csc *CertificateStoreCtx) GetCurrentCert() *Certificate {
+	x509 := C.X509_STORE_CTX_get_current_cert(csc.ctx)
 	if x509 == nil {
 		return nil
 	}
 	// add a ref
-	if 1 != C.X_X509_add_ref(x509) {
+	if C.X_X509_add_ref(x509) != 1 {
 		return nil
 	}
 	cert := &Certificate{
@@ -531,7 +531,7 @@ func (c *Ctx) SetNextProtos(protos []string) error {
 	for _, proto := range protos {
 		if len(proto) > 255 {
 			return fmt.Errorf(
-				"Proto length can't be more than 255. But got a proto %s with length %d",
+				"proto length can't be more than 255. But got a proto %s with length %d",
 				proto, len(proto))
 		}
 		vector = append(vector, byte(uint8(len(proto))))
@@ -540,7 +540,7 @@ func (c *Ctx) SetNextProtos(protos []string) error {
 	ret := int(C.SSL_CTX_set_alpn_protos(c.ctx, (*C.uchar)(unsafe.Pointer(&vector[0])),
 		C.uint(len(vector))))
 	if ret != 0 {
-		return errors.New("Error while setting protos to ctx")
+		return errors.New("error while setting protos to ctx")
 	}
 	return nil
 }
