@@ -40,7 +40,7 @@ func TestECDH(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if bytes.Compare(mySecret, theirSecret) != 0 {
+	if !bytes.Equal(mySecret, theirSecret) {
 		t.Fatal("shared secrets are different")
 	}
 }

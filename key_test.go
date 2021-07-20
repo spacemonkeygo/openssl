@@ -187,12 +187,10 @@ func TestGenerateEd25519(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = key.MarshalPKIXPublicKeyPEM()
-	if err != nil {
+	if _, err = key.MarshalPKIXPublicKeyPEM(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = key.MarshalPKCS1PrivateKeyPEM()
-	if err != nil {
+	if _, err = key.MarshalPKCS1PrivateKeyPEM(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -289,8 +287,7 @@ func TestSignED25519(t *testing.T) {
 }
 
 func TestMarshalEC(t *testing.T) {
-	key, err := LoadPrivateKeyFromPEM(prime256v1KeyBytes)
-	if err != nil {
+	if _, err := LoadPrivateKeyFromPEM(prime256v1KeyBytes); err != nil {
 		t.Fatal(err)
 	}
 	cert, err := LoadCertificateFromPEM(prime256v1CertBytes)
@@ -299,7 +296,7 @@ func TestMarshalEC(t *testing.T) {
 	}
 
 	privateBlock, _ := pem_pkg.Decode(prime256v1KeyBytes)
-	key, err = LoadPrivateKeyFromDER(privateBlock.Bytes)
+	key, err := LoadPrivateKeyFromDER(privateBlock.Bytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,8 +407,7 @@ func TestMarshalEd25519(t *testing.T) {
 		t.SkipNow()
 	}
 
-	key, err := LoadPrivateKeyFromPEM(ed25519KeyBytes)
-	if err != nil {
+	if _, err := LoadPrivateKeyFromPEM(ed25519KeyBytes); err != nil {
 		t.Fatal(err)
 	}
 	cert, err := LoadCertificateFromPEM(ed25519CertBytes)
@@ -420,7 +416,7 @@ func TestMarshalEd25519(t *testing.T) {
 	}
 
 	privateBlock, _ := pem_pkg.Decode(ed25519KeyBytes)
-	key, err = LoadPrivateKeyFromDER(privateBlock.Bytes)
+	key, err := LoadPrivateKeyFromDER(privateBlock.Bytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,17 +431,15 @@ func TestMarshalEd25519(t *testing.T) {
 		t.Fatal("invalid cert pem bytes")
 	}
 
-	pem, err = key.MarshalPKCS1PrivateKeyPEM()
-	if err != nil {
+	if _, err = key.MarshalPKCS1PrivateKeyPEM(); err != nil {
 		t.Fatal(err)
 	}
 
-	der, err := key.MarshalPKCS1PrivateKeyDER()
-	if err != nil {
+	if _, err := key.MarshalPKCS1PrivateKeyDER(); err != nil {
 		t.Fatal(err)
 	}
 
-	der, err = key.MarshalPKIXPublicKeyDER()
+	der, err := key.MarshalPKIXPublicKeyDER()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,22 +449,22 @@ func TestMarshalEd25519(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loaded_pubkey_from_pem, err := LoadPublicKeyFromPEM(pem)
+	loadedPubkeyFromPem, err := LoadPublicKeyFromPEM(pem)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	loaded_pubkey_from_der, err := LoadPublicKeyFromDER(der)
+	loadedPubkeyFromDer, err := LoadPublicKeyFromDER(der)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = loaded_pubkey_from_pem.MarshalPKIXPublicKeyDER()
+	_, err = loadedPubkeyFromPem.MarshalPKIXPublicKeyDER()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = loaded_pubkey_from_der.MarshalPKIXPublicKeyDER()
+	_, err = loadedPubkeyFromDer.MarshalPKIXPublicKeyDER()
 	if err != nil {
 		t.Fatal(err)
 	}

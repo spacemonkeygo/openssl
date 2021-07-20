@@ -40,7 +40,7 @@ import (
 )
 
 var (
-	ValidationError = errors.New("Host validation error")
+	ValidationError = errors.New("host validation error") //lint:ignore ST1012 rename may cause breaking changes; research before renaming.
 )
 
 type CheckFlags int
