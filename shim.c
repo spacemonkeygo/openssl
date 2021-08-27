@@ -428,7 +428,7 @@ int X_SSL_session_reused(SSL *ssl) {
 }
 
 int X_SSL_new_index() {
-	return SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+	return SSL_get_ex_new_index(0, NULL, NULL, NULL, go_ssl_crypto_ex_free);
 }
 
 int X_SSL_verify_cb(int ok, X509_STORE_CTX* store) {
