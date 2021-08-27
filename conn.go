@@ -28,6 +28,7 @@ import (
 	"unsafe"
 
 	"github.com/libp2p/go-openssl/utils"
+	"github.com/mattn/go-pointer"
 )
 
 var (
@@ -137,7 +138,7 @@ func newConn(conn net.Conn, ctx *Ctx) (*Conn, error) {
 	C.SSL_set_bio(ssl, into_ssl_cbio, from_ssl_cbio)
 
 	s := &SSL{ssl: ssl}
-	C.SSL_set_ex_data(s.ssl, get_ssl_idx(), unsafe.Pointer(s))
+	C.SSL_set_ex_data(s.ssl, get_ssl_idx(), pointer.Save(s))
 
 	c := &Conn{
 		SSL: s,
