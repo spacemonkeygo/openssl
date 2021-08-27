@@ -190,9 +190,6 @@ func TestGenerateEd25519(t *testing.T) {
 	if _, err = key.MarshalPKIXPublicKeyPEM(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = key.MarshalPKCS1PrivateKeyPEM(); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestSign(t *testing.T) {
@@ -431,9 +428,7 @@ func TestMarshalEd25519(t *testing.T) {
 		t.Fatal("invalid cert pem bytes")
 	}
 
-	if _, err = key.MarshalPKCS1PrivateKeyPEM(); err != nil {
-		t.Fatal(err)
-	}
+	// NOTE: Ed25519 cannot be marshalled to PEM.
 
 	if _, err := key.MarshalPKCS1PrivateKeyDER(); err != nil {
 		t.Fatal(err)
