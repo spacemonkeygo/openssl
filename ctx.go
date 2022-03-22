@@ -372,6 +372,8 @@ const (
 	CipherServerPreference             Options = C.SSL_OP_CIPHER_SERVER_PREFERENCE
 	NoSessionResumptionOrRenegotiation Options = C.SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
 	NoTicket                           Options = C.SSL_OP_NO_TICKET
+	DontInsertEmptyFragments           Options = C.SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+	TLSBlockPaddingBug                 Options = C.SSL_OP_TLS_BLOCK_PADDING_BUG
 )
 
 // SetOptions sets context options. See
