@@ -115,3 +115,5 @@ func errorFromErrorQueue() error {
 	}
 	return errors.New(fmt.Sprintf("SSL errors: %s", strings.Join(errs, "\n")))
 }
+
+const OpenSSLVersion string = C.OPENSSL_VERSION_TEXT
