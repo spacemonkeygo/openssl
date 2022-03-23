@@ -37,6 +37,10 @@
 #define SSL_OP_NO_COMPRESSION 0
 #endif
 
+#ifndef SSL_OP_NO_TLSv1_3
+#define SSL_OP_NO_TLSv1_3 0
+#endif
+
 /* shim  methods */
 extern int X_shim_init();
 
