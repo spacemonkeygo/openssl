@@ -369,9 +369,16 @@ const (
 	NoSSLv2                            Options = C.SSL_OP_NO_SSLv2
 	NoSSLv3                            Options = C.SSL_OP_NO_SSLv3
 	NoTLSv1                            Options = C.SSL_OP_NO_TLSv1
+	NoTLSv1_1                          Options = C.SSL_OP_NO_TLSv1_1
+	NoTLSv1_2                          Options = C.SSL_OP_NO_TLSv1_2
 	CipherServerPreference             Options = C.SSL_OP_CIPHER_SERVER_PREFERENCE
 	NoSessionResumptionOrRenegotiation Options = C.SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
 	NoTicket                           Options = C.SSL_OP_NO_TICKET
+	DontInsertEmptyFragments           Options = C.SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+	TLSBlockPaddingBug                 Options = C.SSL_OP_TLS_BLOCK_PADDING_BUG
+
+	// NoTLSv1_3 is only valid if you are using OpenSSL 1.1.1 or newer
+	NoTLSv1_3 Options = C.SSL_OP_NO_TLSv1_3
 )
 
 // SetOptions sets context options. See

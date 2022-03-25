@@ -375,7 +375,7 @@ int X_PEM_write_bio_PrivateKey_traditional(BIO *bio, EVP_PKEY *key, const EVP_CI
 int X_shim_init() {
 	int rc = 0;
 
-	OPENSSL_config(NULL);
+	OPENSSL_no_config();
 	ENGINE_load_builtin_engines();
 	SSL_load_error_strings();
 	SSL_library_init();
