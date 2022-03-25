@@ -117,3 +117,7 @@ func errorFromErrorQueue() error {
 }
 
 const OpenSSLVersion string = C.OPENSSL_VERSION_TEXT
+
+// 1 for enable
+const SSL3Enable int = C.X_SSL3_ENABLE
+const TLS1Enable int = C.X_TLS1_ENABLE

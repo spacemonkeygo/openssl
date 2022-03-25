@@ -33,6 +33,18 @@
 #define SSL_MODE_RELEASE_BUFFERS 0
 #endif
 
+#ifndef OPENSSL_NO_SSL3_METHOD
+#define X_SSL3_ENABLE 1
+#else
+#define X_SSL3_ENABLE 0
+#endif
+
+#ifndef OPENSSL_NO_TLS1_METHOD
+#define X_TLS1_ENABLE 1
+#else
+#define X_TLS1_ENABLE 0
+#endif
+
 #ifndef SSL_OP_NO_COMPRESSION
 #define SSL_OP_NO_COMPRESSION 0
 #endif
