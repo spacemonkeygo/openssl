@@ -362,6 +362,32 @@ func (c *Ctx) LoadVerifyLocations(ca_file string, ca_path string) error {
 	return nil
 }
 
+type Version int
+
+const (
+	SSL3_VERSION Version = C.SSL3_VERSION
+	TLS1_VERSION Version = C.TLS1_VERSION
+	TLS1_1_VERSION Version = C.TLS1_1_VERSION
+	TLS1_2_VERSION Version = C.TLS1_2_VERSION
+	TLS1_3_VERSION Version = C.TLS1_3_VERSION
+	DTLS1_VERSION Version = C.DTLS1_VERSION
+	DTLS1_2_VERSION Version = C.DTLS1_2_VERSION
+)
+
+// SetMinProtoVersion sets the minimum supported protocol version for the Ctx.
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_min_proto_version.html
+func (c *Ctx) SetMinProtoVersion(version Version) bool {
+	return C.X_SSL_CTX_set_min_proto_version(
+		c.ctx, C.int(version)) == 1
+}
+
+// SetMaxProtoVersion sets the maximum supported protocol version for the Ctx.
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_max_proto_version.html
+func (c *Ctx) SetMaxProtoVersion(version Version) bool {
+	return C.X_SSL_CTX_set_max_proto_version(
+		c.ctx, C.int(version)) == 1
+}
+
 type Options int
 
 const (
