@@ -475,6 +475,14 @@ int X_SSL_CTX_new_index() {
 	return SSL_CTX_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 }
 
+int X_SSL_CTX_set_min_proto_version(SSL_CTX *ctx, int version) {
+	return SSL_CTX_set_min_proto_version(ctx, version);
+}
+
+int X_SSL_CTX_set_max_proto_version(SSL_CTX *ctx, int version) {
+	return SSL_CTX_set_max_proto_version(ctx, version);
+}
+
 long X_SSL_CTX_set_options(SSL_CTX* ctx, long options) {
 	return SSL_CTX_set_options(ctx, options);
 }
