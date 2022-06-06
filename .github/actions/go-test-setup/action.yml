@@ -11,6 +11,8 @@ runs:
       shell: bash
       if: ${{ runner.os == 'Windows' }}
       run: |
+        pacman -S --noconfirm mingw-w64-x86_64-pkg-config
+        pacman -S --noconfirm mingw-w64-i686-pkg-config
         echo '/c/msys64/mingw64/bin' >> $GITHUB_PATH
         echo 'PATH_386=/c/msys64/mingw32/bin:${{ env.PATH_386 }}' >> $GITHUB_ENV
     - name: Linux setup
