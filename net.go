@@ -89,7 +89,7 @@ func Dial(network, addr string, ctx *Ctx, flags DialFlags) (*Conn, error) {
 // parameters.
 func DialTimeout(network, addr string, timeout time.Duration, ctx *Ctx,
 	flags DialFlags) (*Conn, error) {
-	d := net.Dialer {Timeout: timeout}
+	d := net.Dialer{Timeout: timeout}
 	return dialSession(d, network, addr, ctx, flags, nil)
 }
 
@@ -109,7 +109,7 @@ func DialTimeout(network, addr string, timeout time.Duration, ctx *Ctx,
 func DialSession(network, addr string, ctx *Ctx, flags DialFlags,
 	session []byte) (*Conn, error) {
 	var d net.Dialer
-	return dialSession(d, network, addr, ctx, flags, session);
+	return dialSession(d, network, addr, ctx, flags, session)
 }
 
 func dialSession(d net.Dialer, network, addr string, ctx *Ctx, flags DialFlags,

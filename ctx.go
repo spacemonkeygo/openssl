@@ -365,12 +365,12 @@ func (c *Ctx) LoadVerifyLocations(ca_file string, ca_path string) error {
 type Version int
 
 const (
-	SSL3_VERSION Version = C.SSL3_VERSION
-	TLS1_VERSION Version = C.TLS1_VERSION
-	TLS1_1_VERSION Version = C.TLS1_1_VERSION
-	TLS1_2_VERSION Version = C.TLS1_2_VERSION
-	TLS1_3_VERSION Version = C.TLS1_3_VERSION
-	DTLS1_VERSION Version = C.DTLS1_VERSION
+	SSL3_VERSION    Version = C.SSL3_VERSION
+	TLS1_VERSION    Version = C.TLS1_VERSION
+	TLS1_1_VERSION  Version = C.TLS1_1_VERSION
+	TLS1_2_VERSION  Version = C.TLS1_2_VERSION
+	TLS1_3_VERSION  Version = C.TLS1_3_VERSION
+	DTLS1_VERSION   Version = C.DTLS1_VERSION
 	DTLS1_2_VERSION Version = C.DTLS1_2_VERSION
 )
 
