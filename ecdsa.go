@@ -25,7 +25,7 @@ import (
 // - Parameter publicKey: The OpenSSL EVP_PKEY ECDSA public key in DER format
 // - Parameter signature: The ECDSA signature to verify in DER format
 // - Parameter data: The raw data used to generate the signature
-// - Parameter digest: The name of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512, ripemd160
+// - Parameter digest: The name of the digest to use. The currently supported values are: sha1, sha224, sha256, sha384, sha512
 // - Returns: True if the signature was verified
 func VerifyECDSASignature(publicKey, signature, data []byte, digest string) (bool, error) {
 	// read EC Public Key
@@ -74,8 +74,6 @@ func VerifyECDSASignature(publicKey, signature, data []byte, digest string) (boo
 		digestType = C.EVP_sha384()
 	case "sha512":
 		digestType = C.EVP_sha512()
-	case "ripemd160":
-		digestType = C.EVP_ripemd160()
 	default:
 		return false, errors.New("unsupported digest value")
 	}
