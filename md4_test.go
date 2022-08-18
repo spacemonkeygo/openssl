@@ -56,7 +56,19 @@ var md4Examples = []struct{ out, in string }{
 	{"6e593341e62194911d5cc31e39835f27", "c5e4bc73821faa34adf9468441ffd97520a96cd5debda4d51edcaaf2b23fbd"},
 }
 
+func skipIfMD4Unsupported(t testing.TB) {
+	t.Helper()
+
+	hash, err := NewMD4Hash()
+	if err != nil {
+		t.Skip("MD4 is not supported by OpenSSL")
+	}
+	hash.Close()
+}
+
 func TestMD4Examples(t *testing.T) {
+	skipIfMD4Unsupported(t)
+
 	for _, ex := range md4Examples {
 		buf, err := hex.DecodeString(ex.in)
 		if err != nil {
@@ -75,6 +87,8 @@ func TestMD4Examples(t *testing.T) {
 }
 
 func TestMD4Writer(t *testing.T) {
+	skipIfMD4Unsupported(t)
+
 	ohash, err := NewMD4Hash()
 	if err != nil {
 		t.Fatal(err)
@@ -120,9 +134,13 @@ func benchmarkMD4(b *testing.B, length int64, fn md4func) {
 }
 
 func BenchmarkMD4Large_openssl(b *testing.B) {
+	skipIfMD4Unsupported(b)
+
 	benchmarkMD4(b, 1024*1024, func(buf []byte) { MD4(buf) })
 }
 
 func BenchmarkMD4Small_openssl(b *testing.B) {
+	skipIfMD4Unsupported(b)
+
 	benchmarkMD4(b, 1, func(buf []byte) { MD4(buf) })
 }
