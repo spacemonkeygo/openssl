@@ -25,8 +25,10 @@ package openssl
 
 */
 import "C"
-import "errors"
-import "runtime"
+import (
+	"errors"
+	"runtime"
+)
 
 // FIPSModeSet enables a FIPS 140-2 validated mode of operation.
 // https://wiki.openssl.org/index.php/FIPS_mode_set()

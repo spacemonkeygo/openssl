@@ -19,7 +19,7 @@ import "C"
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"runtime"
 	"unsafe"
 )
@@ -242,7 +242,7 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
 		return nil, errors.New("failed dumping private key")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKCS1PrivateKeyDER() (der_block []byte,
@@ -257,7 +257,7 @@ func (key *pKey) MarshalPKCS1PrivateKeyDER() (der_block []byte,
 		return nil, errors.New("failed dumping private key der")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
@@ -272,7 +272,7 @@ func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
 		return nil, errors.New("failed dumping public key pem")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
@@ -287,7 +287,7 @@ func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
 		return nil, errors.New("failed dumping public key der")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 // LoadPrivateKeyFromPEM loads a private key from a PEM-encoded block.
