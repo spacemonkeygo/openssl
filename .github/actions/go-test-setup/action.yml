@@ -1,0 +1,25 @@
+name: Go Test Setup
+description: Set up the environment for go test
+runs:
+  using: "composite"
+  steps:
+    - name: Common setup
+      shell: bash
+      run: |
+        echo 'CGO_ENABLED=1' >> $GITHUB_ENV
+    - name: Windows setup
+      shell: bash
+      if: ${{ runner.os == 'Windows' }}
+      run: |
+        pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-i686-toolchain
+        echo '/c/msys64/mingw64/bin' >> $GITHUB_PATH
+        echo 'PATH_386=/c/msys64/mingw32/bin:${{ env.PATH_386 }}' >> $GITHUB_ENV
+    - name: Linux setup
+      shell: bash
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        sudo apt-get install gcc-multilib
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install libssl-dev:i386
+        echo 'CC_FOR_linux_386=i686-w64-mingw32-gcc'

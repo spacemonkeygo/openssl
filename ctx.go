@@ -20,13 +20,13 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"runtime"
 	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/mattn/go-pointer"
 	"github.com/spacemonkeygo/spacelog"
 )
 
@@ -61,7 +61,7 @@ func newCtx(method *C.SSL_METHOD) (*Ctx, error) {
 		return nil, errorFromErrorQueue()
 	}
 	c := &Ctx{ctx: ctx}
-	C.SSL_CTX_set_ex_data(ctx, get_ssl_ctx_idx(), unsafe.Pointer(c))
+	C.SSL_CTX_set_ex_data(ctx, get_ssl_ctx_idx(), pointer.Save(c))
 	runtime.SetFinalizer(c, func(c *Ctx) {
 		C.SSL_CTX_free(c.ctx)
 	})
@@ -120,14 +120,14 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 		return nil, err
 	}
 
-	cert_bytes, err := ioutil.ReadFile(cert_file)
+	cert_bytes, err := os.ReadFile(cert_file)
 	if err != nil {
 		return nil, err
 	}
 
 	certs := SplitPEM(cert_bytes)
 	if len(certs) == 0 {
-		return nil, fmt.Errorf("No PEM certificate found in '%s'", cert_file)
+		return nil, fmt.Errorf("no PEM certificate found in '%s'", cert_file)
 	}
 	first, certs := certs[0], certs[1:]
 	cert, err := LoadCertificateFromPEM(first)
@@ -151,7 +151,7 @@ func NewCtxFromFiles(cert_file string, key_file string) (*Ctx, error) {
 		}
 	}
 
-	key_bytes, err := ioutil.ReadFile(key_file)
+	key_bytes, err := os.ReadFile(key_file)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func (c *Ctx) SetEllipticCurve(curve EllipticCurve) error {
 
 	k := C.EC_KEY_new_by_curve_name(C.int(curve))
 	if k == nil {
-		return errors.New("Unknown curve")
+		return errors.New("unknown curve")
 	}
 	defer C.EC_KEY_free(k)
 
@@ -302,12 +302,12 @@ type CertificateStoreCtx struct {
 	ssl_ctx *Ctx
 }
 
-func (self *CertificateStoreCtx) VerifyResult() VerifyResult {
-	return VerifyResult(C.X509_STORE_CTX_get_error(self.ctx))
+func (csc *CertificateStoreCtx) VerifyResult() VerifyResult {
+	return VerifyResult(C.X509_STORE_CTX_get_error(csc.ctx))
 }
 
-func (self *CertificateStoreCtx) Err() error {
-	code := C.X509_STORE_CTX_get_error(self.ctx)
+func (csc *CertificateStoreCtx) Err() error {
+	code := C.X509_STORE_CTX_get_error(csc.ctx)
 	if code == C.X509_V_OK {
 		return nil
 	}
@@ -315,19 +315,19 @@ func (self *CertificateStoreCtx) Err() error {
 		C.GoString(C.X509_verify_cert_error_string(C.long(code))))
 }
 
-func (self *CertificateStoreCtx) Depth() int {
-	return int(C.X509_STORE_CTX_get_error_depth(self.ctx))
+func (csc *CertificateStoreCtx) Depth() int {
+	return int(C.X509_STORE_CTX_get_error_depth(csc.ctx))
 }
 
-// the certicate returned is only valid for the lifetime of the underlying
+// the certificate returned is only valid for the lifetime of the underlying
 // X509_STORE_CTX
-func (self *CertificateStoreCtx) GetCurrentCert() *Certificate {
-	x509 := C.X509_STORE_CTX_get_current_cert(self.ctx)
+func (csc *CertificateStoreCtx) GetCurrentCert() *Certificate {
+	x509 := C.X509_STORE_CTX_get_current_cert(csc.ctx)
 	if x509 == nil {
 		return nil
 	}
 	// add a ref
-	if 1 != C.X_X509_add_ref(x509) {
+	if C.X_X509_add_ref(x509) != 1 {
 		return nil
 	}
 	cert := &Certificate{
@@ -359,6 +359,32 @@ func (c *Ctx) LoadVerifyLocations(ca_file string, ca_path string) error {
 		return errorFromErrorQueue()
 	}
 	return nil
+}
+
+type Version int
+
+const (
+	SSL3_VERSION    Version = C.SSL3_VERSION
+	TLS1_VERSION    Version = C.TLS1_VERSION
+	TLS1_1_VERSION  Version = C.TLS1_1_VERSION
+	TLS1_2_VERSION  Version = C.TLS1_2_VERSION
+	TLS1_3_VERSION  Version = C.TLS1_3_VERSION
+	DTLS1_VERSION   Version = C.DTLS1_VERSION
+	DTLS1_2_VERSION Version = C.DTLS1_2_VERSION
+)
+
+// SetMinProtoVersion sets the minimum supported protocol version for the Ctx.
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_min_proto_version.html
+func (c *Ctx) SetMinProtoVersion(version Version) bool {
+	return C.X_SSL_CTX_set_min_proto_version(
+		c.ctx, C.int(version)) == 1
+}
+
+// SetMaxProtoVersion sets the maximum supported protocol version for the Ctx.
+// http://www.openssl.org/docs/ssl/SSL_CTX_set_max_proto_version.html
+func (c *Ctx) SetMaxProtoVersion(version Version) bool {
+	return C.X_SSL_CTX_set_max_proto_version(
+		c.ctx, C.int(version)) == 1
 }
 
 type Options int
@@ -430,7 +456,7 @@ func go_ssl_ctx_verify_cb_thunk(p unsafe.Pointer, ok C.int, ctx *C.X509_STORE_CT
 			os.Exit(1)
 		}
 	}()
-	verify_cb := (*Ctx)(p).verify_cb
+	verify_cb := pointer.Restore(p).(*Ctx).verify_cb
 	// set up defaults just in case verify_cb is nil
 	if verify_cb != nil {
 		store := &CertificateStoreCtx{ctx: ctx}
@@ -518,6 +544,29 @@ func (c *Ctx) SetCipherList(list string) error {
 	defer C.free(unsafe.Pointer(clist))
 	if int(C.SSL_CTX_set_cipher_list(c.ctx, clist)) == 0 {
 		return errorFromErrorQueue()
+	}
+	return nil
+}
+
+// SetNextProtos sets Negotiation protocol to the ctx.
+func (c *Ctx) SetNextProtos(protos []string) error {
+	if len(protos) == 0 {
+		return nil
+	}
+	vector := make([]byte, 0)
+	for _, proto := range protos {
+		if len(proto) > 255 {
+			return fmt.Errorf(
+				"proto length can't be more than 255. But got a proto %s with length %d",
+				proto, len(proto))
+		}
+		vector = append(vector, byte(uint8(len(proto))))
+		vector = append(vector, []byte(proto)...)
+	}
+	ret := int(C.SSL_CTX_set_alpn_protos(c.ctx, (*C.uchar)(unsafe.Pointer(&vector[0])),
+		C.uint(len(vector))))
+	if ret != 0 {
+		return errors.New("error while setting protos to ctx")
 	}
 	return nil
 }
