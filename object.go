@@ -1,4 +1,4 @@
-// Copyright (C) 2017. See AUTHORS.
+// Copyright (C) 2020. See AUTHORS.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +14,11 @@
 
 package openssl
 
-import (
-	"regexp"
-)
+// #include "shim.h"
+import "C"
 
-var pemSplit *regexp.Regexp = regexp.MustCompile(`(?sm)` +
-	`(^-----[\s-]*?BEGIN.*?-----[\s-]*?$` +
-	`.*?` +
-	`^-----[\s-]*?END.*?-----[\s-]*?$)`)
-
-func SplitPEM(data []byte) [][]byte {
-	return pemSplit.FindAll(data, -1)
+// CreateObjectIdentifier creates ObjectIdentifier and returns NID for the created
+// ObjectIdentifier
+func CreateObjectIdentifier(oid string, shortName string, longName string) NID {
+	return NID(C.OBJ_create(C.CString(oid), C.CString(shortName), C.CString(longName)))
 }

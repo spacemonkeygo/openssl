@@ -185,17 +185,16 @@ func TestBadTag(t *testing.T) {
 	}
 	// flip the last bit
 	tag[len(tag)-1] ^= 1
-	plaintext_out, err := doDecryption(key, iv, nil, ciphertext, tag, 128, 129)
-	if err == nil {
+	if _, err := doDecryption(key, iv, nil, ciphertext, tag, 128, 129); err == nil {
 		t.Fatal("Expected error for bad tag, but got none")
 	}
 	// flip it back, try again just to make sure
 	tag[len(tag)-1] ^= 1
-	plaintext_out, err = doDecryption(key, iv, nil, ciphertext, tag, 128, 129)
+	plaintextOut, err := doDecryption(key, iv, nil, ciphertext, tag, 128, 129)
 	if err != nil {
 		t.Fatal("Decryption failure:", err)
 	}
-	checkEqual(t, plaintext_out, plaintext)
+	checkEqual(t, plaintextOut, plaintext)
 }
 
 func TestBadCiphertext(t *testing.T) {
@@ -211,17 +210,16 @@ func TestBadCiphertext(t *testing.T) {
 	}
 	// flip the last bit
 	ciphertext[len(ciphertext)-1] ^= 1
-	plaintext_out, err := doDecryption(key, iv, aad, ciphertext, tag, 192, 192)
-	if err == nil {
+	if _, err := doDecryption(key, iv, aad, ciphertext, tag, 192, 192); err == nil {
 		t.Fatal("Expected error for bad ciphertext, but got none")
 	}
 	// flip it back, try again just to make sure
 	ciphertext[len(ciphertext)-1] ^= 1
-	plaintext_out, err = doDecryption(key, iv, aad, ciphertext, tag, 192, 192)
+	plaintextOut, err := doDecryption(key, iv, aad, ciphertext, tag, 192, 192)
 	if err != nil {
 		t.Fatal("Decryption failure:", err)
 	}
-	checkEqual(t, plaintext_out, plaintext)
+	checkEqual(t, plaintextOut, plaintext)
 }
 
 func TestBadAAD(t *testing.T) {
@@ -237,17 +235,16 @@ func TestBadAAD(t *testing.T) {
 	}
 	// flip the last bit
 	aad[len(aad)-1] ^= 1
-	plaintext_out, err := doDecryption(key, iv, aad, ciphertext, tag, 256, 256)
-	if err == nil {
+	if _, err := doDecryption(key, iv, aad, ciphertext, tag, 256, 256); err == nil {
 		t.Fatal("Expected error for bad AAD, but got none")
 	}
 	// flip it back, try again just to make sure
 	aad[len(aad)-1] ^= 1
-	plaintext_out, err = doDecryption(key, iv, aad, ciphertext, tag, 256, 256)
+	plaintextOut, err := doDecryption(key, iv, aad, ciphertext, tag, 256, 256)
 	if err != nil {
 		t.Fatal("Decryption failure:", err)
 	}
-	checkEqual(t, plaintext_out, plaintext)
+	checkEqual(t, plaintextOut, plaintext)
 }
 
 func TestNonAuthenticatedEncryption(t *testing.T) {

@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !openssl_static
+//go:build !openssl_static
 
 package openssl
 
-// #cgo linux windows pkg-config: libssl libcrypto
-// #cgo linux CFLAGS: -Wno-deprecated-declarations
+
+// #cgo linux windows freebsd openbsd solaris pkg-config: libssl libcrypto
+// #cgo linux freebsd openbsd solaris CFLAGS: -Wno-deprecated-declarations
 // #cgo darwin 386 CFLAGS: -I/usr/local/opt/openssl@1.1/include -I/usr/local/opt/openssl/include -Wno-deprecated-declarations
 // #cgo darwin 386 LDFLAGS: -L/usr/local/opt/openssl@1.1/lib -L/usr/local/opt/openssl/lib -lssl -lcrypto
 // #cgo darwin arm64 CFLAGS: -I/opt/homebrew/opt/openssl@1.1/include -Wno-deprecated-declarations

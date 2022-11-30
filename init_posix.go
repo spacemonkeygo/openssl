@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build linux darwin solaris
-// +build !windows
+//go:build (linux || darwin || solaris || freebsd || openbsd) && !windows
 
 package openssl
 

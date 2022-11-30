@@ -19,7 +19,7 @@ import "C"
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"runtime"
 	"unsafe"
 )
@@ -85,6 +85,12 @@ type PublicKey interface {
 	// `KeyType() == KeyTypeRSA2` would both have `BaseType() == KeyTypeRSA`.
 	BaseType() NID
 
+	// Equal compares the key with the passed in key.
+	Equal(key PublicKey) bool
+
+	// Size returns the size (in bytes) of signatures created with this key.
+	Size() int
+
 	evpPKey() *C.EVP_PKEY
 }
 
@@ -109,8 +115,16 @@ type pKey struct {
 
 func (key *pKey) evpPKey() *C.EVP_PKEY { return key.key }
 
+func (key *pKey) Equal(other PublicKey) bool {
+	return C.EVP_PKEY_cmp(key.key, other.evpPKey()) == 1
+}
+
 func (key *pKey) KeyType() NID {
 	return NID(C.EVP_PKEY_id(key.key))
+}
+
+func (key *pKey) Size() int {
+	return int(C.EVP_PKEY_size(key.key))
 }
 
 func (key *pKey) BaseType() NID {
@@ -129,36 +143,36 @@ func (key *pKey) SignPKCS1v15(method Method, data []byte) ([]byte, error) {
 			return nil, errors.New("signpkcs1v15: 0-length data or non-null digest")
 		}
 
-		if 1 != C.X_EVP_DigestSignInit(ctx, nil, nil, nil, key.key) {
+		if C.X_EVP_DigestSignInit(ctx, nil, nil, nil, key.key) != 1 {
 			return nil, errors.New("signpkcs1v15: failed to init signature")
 		}
 
 		// evp signatures are 64 bytes
-		sig := make([]byte, 64, 64)
+		sig := make([]byte, 64)
 		var sigblen C.size_t = 64
-		if 1 != C.X_EVP_DigestSign(ctx,
-			((*C.uchar)(unsafe.Pointer(&sig[0]))),
+		if C.X_EVP_DigestSign(ctx,
+			(*C.uchar)(unsafe.Pointer(&sig[0])),
 			&sigblen,
 			(*C.uchar)(unsafe.Pointer(&data[0])),
-			C.size_t(len(data))) {
+			C.size_t(len(data))) != 1 {
 			return nil, errors.New("signpkcs1v15: failed to do one-shot signature")
 		}
 
 		return sig[:sigblen], nil
 	} else {
-		if 1 != C.X_EVP_SignInit(ctx, method) {
+		if C.X_EVP_SignInit(ctx, method) != 1 {
 			return nil, errors.New("signpkcs1v15: failed to init signature")
 		}
 		if len(data) > 0 {
-			if 1 != C.X_EVP_SignUpdate(
-				ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
+			if C.X_EVP_SignUpdate(
+				ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) != 1 {
 				return nil, errors.New("signpkcs1v15: failed to update signature")
 			}
 		}
 		sig := make([]byte, C.X_EVP_PKEY_size(key.key))
 		var sigblen C.uint
-		if 1 != C.X_EVP_SignFinal(ctx,
-			((*C.uchar)(unsafe.Pointer(&sig[0]))), &sigblen, key.key) {
+		if C.X_EVP_SignFinal(ctx,
+			(*C.uchar)(unsafe.Pointer(&sig[0])), &sigblen, key.key) != 1 {
 			return nil, errors.New("signpkcs1v15: failed to finalize signature")
 		}
 		return sig[:sigblen], nil
@@ -169,39 +183,43 @@ func (key *pKey) VerifyPKCS1v15(method Method, data, sig []byte) error {
 	ctx := C.X_EVP_MD_CTX_new()
 	defer C.X_EVP_MD_CTX_free(ctx)
 
+	if len(sig) == 0 {
+		return errors.New("verifypkcs1v15: 0-length sig")
+	}
+
 	if key.KeyType() == KeyTypeED25519 {
 		// do ED specific one-shot sign
 
-		if method != nil || len(data) == 0 || len(sig) == 0 {
-			return errors.New("verifypkcs1v15: 0-length data or sig or non-null digest")
+		if method != nil || len(data) == 0 {
+			return errors.New("verifypkcs1v15: 0-length data or non-null digest")
 		}
 
-		if 1 != C.X_EVP_DigestVerifyInit(ctx, nil, nil, nil, key.key) {
+		if C.X_EVP_DigestVerifyInit(ctx, nil, nil, nil, key.key) != 1 {
 			return errors.New("verifypkcs1v15: failed to init verify")
 		}
 
-		if 1 != C.X_EVP_DigestVerify(ctx,
-			((*C.uchar)(unsafe.Pointer(&sig[0]))),
+		if C.X_EVP_DigestVerify(ctx,
+			(*C.uchar)(unsafe.Pointer(&sig[0])),
 			C.size_t(len(sig)),
 			(*C.uchar)(unsafe.Pointer(&data[0])),
-			C.size_t(len(data))) {
+			C.size_t(len(data))) != 1 {
 			return errors.New("verifypkcs1v15: failed to do one-shot verify")
 		}
 
 		return nil
 
 	} else {
-		if 1 != C.X_EVP_VerifyInit(ctx, method) {
+		if C.X_EVP_VerifyInit(ctx, method) != 1 {
 			return errors.New("verifypkcs1v15: failed to init verify")
 		}
 		if len(data) > 0 {
-			if 1 != C.X_EVP_VerifyUpdate(
-				ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) {
+			if C.X_EVP_VerifyUpdate(
+				ctx, unsafe.Pointer(&data[0]), C.uint(len(data))) != 1 {
 				return errors.New("verifypkcs1v15: failed to update verify")
 			}
 		}
-		if 1 != C.X_EVP_VerifyFinal(ctx,
-			((*C.uchar)(unsafe.Pointer(&sig[0]))), C.uint(len(sig)), key.key) {
+		if C.X_EVP_VerifyFinal(ctx,
+			(*C.uchar)(unsafe.Pointer(&sig[0])), C.uint(len(sig)), key.key) != 1 {
 			return errors.New("verifypkcs1v15: failed to finalize verify")
 		}
 		return nil
@@ -224,7 +242,7 @@ func (key *pKey) MarshalPKCS1PrivateKeyPEM() (pem_block []byte,
 		return nil, errors.New("failed dumping private key")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKCS1PrivateKeyDER() (der_block []byte,
@@ -239,7 +257,7 @@ func (key *pKey) MarshalPKCS1PrivateKeyDER() (der_block []byte,
 		return nil, errors.New("failed dumping private key der")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
@@ -254,7 +272,7 @@ func (key *pKey) MarshalPKIXPublicKeyPEM() (pem_block []byte,
 		return nil, errors.New("failed dumping public key pem")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
@@ -269,7 +287,7 @@ func (key *pKey) MarshalPKIXPublicKeyDER() (der_block []byte,
 		return nil, errors.New("failed dumping public key der")
 	}
 
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 // LoadPrivateKeyFromPEM loads a private key from a PEM-encoded block.

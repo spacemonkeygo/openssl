@@ -19,7 +19,7 @@ import "C"
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"runtime"
 	"time"
@@ -267,8 +267,8 @@ func (c *Certificate) Sign(privKey PrivateKey, digest EVP_MD) error {
 	case EVP_SHA384:
 	case EVP_SHA512:
 	default:
-		return errors.New("Unsupported digest" +
-			"You're probably looking for 'EVP_SHA256' or 'EVP_SHA512'.")
+		return errors.New("unsupported digest; " +
+			"you're probably looking for 'EVP_SHA256' or 'EVP_SHA512'")
 	}
 	return c.insecureSign(privKey, digest)
 }
@@ -331,6 +331,16 @@ func (c *Certificate) AddExtension(nid NID, value string) error {
 	return nil
 }
 
+// AddCustomExtension add custom extenstion to the certificate.
+func (c *Certificate) AddCustomExtension(nid NID, value []byte) error {
+	val := (*C.char)(C.CBytes(value))
+	defer C.free(unsafe.Pointer(val))
+	if int(C.add_custom_ext(c.x, C.int(nid), val, C.int(len(value)))) == 0 {
+		return errors.New("unable to add extension")
+	}
+	return nil
+}
+
 // Wraps AddExtension using a map of NID to text extension.
 // Will return without finishing if it encounters an error.
 func (c *Certificate) AddExtensions(extensions map[NID]string) error {
@@ -373,7 +383,7 @@ func (c *Certificate) MarshalPEM() (pem_block []byte, err error) {
 	if int(C.PEM_write_bio_X509(bio, c.x)) != 1 {
 		return nil, errors.New("failed dumping certificate")
 	}
-	return ioutil.ReadAll(asAnyBio(bio))
+	return io.ReadAll(asAnyBio(bio))
 }
 
 // PublicKey returns the public key embedded in the X509 certificate.
@@ -412,4 +422,11 @@ func (c *Certificate) SetVersion(version X509_Version) error {
 		return errors.New("failed to set certificate version")
 	}
 	return nil
+}
+
+// GetExtensionValue returns the value of the given NID's extension.
+func (c *Certificate) GetExtensionValue(nid NID) []byte {
+	dataLength := C.int(0)
+	val := C.get_extention(c.x, C.int(nid), &dataLength)
+	return C.GoBytes(unsafe.Pointer(val), dataLength)
 }
