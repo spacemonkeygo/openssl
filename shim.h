@@ -151,6 +151,16 @@ extern const EVP_CIPHER *X_EVP_CIPHER_CTX_cipher(EVP_CIPHER_CTX *ctx);
 extern int X_EVP_CIPHER_CTX_encrypting(const EVP_CIPHER_CTX *ctx);
 extern int X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid);
 
+/*
+ ************************************************
+ * v0.x.x and v1.x.x type compatibility
+ ************************************************
+ */
+#if OPENSSL_VERSION_NUMBER < 0x3000000fL
+  typedef void OSSL_LIB_CTX;
+#endif
+extern int X_EVP_default_properties_enable_fips(OSSL_LIB_CTX *libctx, int enable);
+
 /* HMAC methods */
 extern size_t X_HMAC_size(const HMAC_CTX *e);
 extern HMAC_CTX *X_HMAC_CTX_new(void);

@@ -768,3 +768,18 @@ long X_X509_get_version(const X509 *x) {
 int X_X509_set_version(X509 *x, long version) {
 	return X509_set_version(x, version);
 }
+
+/*
+ ************************************************
+ * v3.0.0 and later implementation
+ ************************************************
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x3000000fL
+  int X_EVP_default_properties_enable_fips(OSSL_LIB_CTX *libctx, int enable) {
+    return EVP_default_properties_enable_fips(libctx, enable);
+  }
+#else
+  int X_EVP_default_properties_enable_fips(OSSL_LIB_CTX *libctx, int enable) {
+    return FIPS_mode_set(enable);
+  }
+#endif
