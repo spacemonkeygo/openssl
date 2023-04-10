@@ -779,8 +779,6 @@ int X_X509_set_version(X509 *x, long version) {
     return EVP_default_properties_enable_fips(libctx, enable);
   }
 #else
-  typedef void OSSL_LIB_CTX;
-
   int X_EVP_default_properties_enable_fips(OSSL_LIB_CTX *libctx, int enable) {
     return FIPS_mode_set(enable);
   }
