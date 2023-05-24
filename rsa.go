@@ -19,6 +19,8 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"strconv"
 	"unsafe"
 )
 
@@ -186,4 +188,52 @@ func contains(items []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// RSAPublicKey represents the public part of an RSA key.
+type RSAPublicKey struct {
+	N *big.Int // modulus
+	E int      // public exponent
+}
+
+// This function specifically expects an RSA public key DER encoded in the PKCS#1 format
+func ParseRSAPublicKeyPKCS1(publicKey []byte) (key *RSAPublicKey, err error) {
+	inf := C.BIO_new(C.BIO_s_mem())
+	if inf == nil {
+		return nil, errors.New("failed allocating input buffer")
+	}
+	defer C.BIO_free(inf)
+	_, err = asAnyBio(inf).Write(publicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	rsa := C.d2i_RSA_PUBKEY_bio(inf, nil)
+	if rsa == nil {
+		return nil, errors.New("failed to load public key")
+	}
+	defer C.RSA_free(rsa)
+
+	var n, e *C.BIGNUM
+	C.RSA_get0_key(rsa, &n, &e, nil)
+	// Note: purposely not calling BN_free on n & e, because they are cleaned up by RSA_free.
+	// Calling both results in an intermittent SIGTERM.
+
+	CmodulusHex := C.BN_bn2hex(n)
+	defer C.X_OPENSSL_free(unsafe.Pointer(CmodulusHex))
+	CexponentHex := C.BN_bn2hex(e)
+	defer C.X_OPENSSL_free(unsafe.Pointer(CexponentHex))
+
+	modulusHex := C.GoString(CmodulusHex)
+	exponentHex := C.GoString(CexponentHex)
+
+	ret := &RSAPublicKey{N: new(big.Int)}
+	ret.N.SetString(modulusHex, 16)
+	exponent, err := strconv.ParseInt(exponentHex, 16, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert hex exponent to int: %v", err)
+	}
+	ret.E = int(exponent)
+
+	return ret, nil
 }
