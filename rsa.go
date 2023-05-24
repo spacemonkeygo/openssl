@@ -216,8 +216,8 @@ func ParseRSAPublicKeyPKCS1(publicKey []byte) (key *RSAPublicKey, err error) {
 
 	var n, e *C.BIGNUM
 	C.RSA_get0_key(rsa, &n, &e, nil)
-	defer C.BN_free(n)
-	defer C.BN_free(e)
+	// Note: purposely not calling BN_free on n & e, because they are cleaned up by RSA_free.
+	// Calling both results in an intermittent SIGTERM.
 
 	CmodulusHex := C.BN_bn2hex(n)
 	defer C.X_OPENSSL_free(unsafe.Pointer(CmodulusHex))
