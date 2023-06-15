@@ -19,6 +19,7 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"runtime"
@@ -230,6 +231,21 @@ func (c *Certificate) SetSerial(serial *big.Int) error {
 	return nil
 }
 
+// GetIssueDate retrieves the certificate issue date.
+func (c *Certificate) GetIssueDate() (time.Time, error) {
+	var ts time.Time
+	result := C.X_X509_get0_notBefore(c.x)
+	if result == nil {
+		return ts, errors.New("failed to get issue date")
+	}
+	str := C.GoString((*C.char)(unsafe.Pointer(result.data)))
+	ts, err := time.Parse("060102150405Z", str)
+	if err != nil {
+		return ts, fmt.Errorf("unable to parse timestamp: %v", err)
+	}
+	return ts, nil
+}
+
 // SetIssueDate sets the certificate issue date relative to the current time.
 func (c *Certificate) SetIssueDate(when time.Duration) error {
 	offset := C.long(when / time.Second)
@@ -238,6 +254,21 @@ func (c *Certificate) SetIssueDate(when time.Duration) error {
 		return errors.New("failed to set issue date")
 	}
 	return nil
+}
+
+// GetExpireDate retrieves the certificate expiry date.
+func (c *Certificate) GetExpireDate() (time.Time, error) {
+	var ts time.Time
+	result := C.X_X509_get0_notAfter(c.x)
+	if result == nil {
+		return ts, errors.New("failed to get expiry date")
+	}
+	str := C.GoString((*C.char)(unsafe.Pointer(result.data)))
+	ts, err := time.Parse("060102150405Z", str)
+	if err != nil {
+		return ts, fmt.Errorf("unable to parse timestamp: %v", err)
+	}
+	return ts, nil
 }
 
 // SetExpireDate sets the certificate issue date relative to the current time.
