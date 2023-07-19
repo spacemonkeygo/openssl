@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build cgo
 // +build cgo
 
 package openssl
@@ -30,6 +31,9 @@ package openssl
 // }
 // const char * SSL_get_cipher_name_not_a_macro(const SSL *ssl) {
 //    return SSL_get_cipher_name(ssl);
+// }
+// int SSL_version_not_a_macro(const SSL *ssl) {
+//    return SSL_version(ssl);
 // }
 import "C"
 
@@ -611,4 +615,8 @@ func (c *Conn) VerifyResult() VerifyResult {
 
 func (c *Conn) GetServerName() string {
 	return C.GoString(C.SSL_get_servername(c.ssl, C.TLSEXT_NAMETYPE_host_name))
+}
+
+func (c *Conn) Version() int {
+	return int(C.SSL_version_not_a_macro(c.ssl))
 }
