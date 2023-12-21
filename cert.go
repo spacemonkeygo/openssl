@@ -19,6 +19,7 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"runtime"
@@ -230,6 +231,21 @@ func (c *Certificate) SetSerial(serial *big.Int) error {
 	return nil
 }
 
+// GetIssueDate retrieves the certificate issue date.
+func (c *Certificate) GetIssueDate() (time.Time, error) {
+	var ts time.Time
+	result := C.X_X509_get0_notBefore(c.x)
+	if result == nil {
+		return ts, errors.New("failed to get issue date")
+	}
+	str := C.GoString((*C.char)(unsafe.Pointer(result.data)))
+	ts, err := time.Parse("060102150405Z", str)
+	if err != nil {
+		return ts, fmt.Errorf("unable to parse timestamp: %v", err)
+	}
+	return ts, nil
+}
+
 // SetIssueDate sets the certificate issue date relative to the current time.
 func (c *Certificate) SetIssueDate(when time.Duration) error {
 	offset := C.long(when / time.Second)
@@ -238,6 +254,21 @@ func (c *Certificate) SetIssueDate(when time.Duration) error {
 		return errors.New("failed to set issue date")
 	}
 	return nil
+}
+
+// GetExpireDate retrieves the certificate expiry date.
+func (c *Certificate) GetExpireDate() (time.Time, error) {
+	var ts time.Time
+	result := C.X_X509_get0_notAfter(c.x)
+	if result == nil {
+		return ts, errors.New("failed to get expiry date")
+	}
+	str := C.GoString((*C.char)(unsafe.Pointer(result.data)))
+	ts, err := time.Parse("060102150405Z", str)
+	if err != nil {
+		return ts, fmt.Errorf("unable to parse timestamp: %v", err)
+	}
+	return ts, nil
 }
 
 // SetExpireDate sets the certificate issue date relative to the current time.
@@ -363,6 +394,27 @@ func LoadCertificateFromPEM(pem_block []byte) (*Certificate, error) {
 	return x, nil
 }
 
+// LoadCertificateFromDER loads an X509 certificate from a DER-encoded block.
+func LoadCertificateFromDER(der_block []byte) (*Certificate, error) {
+	if len(der_block) == 0 {
+		return nil, errors.New("empty der block")
+	}
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	bio := C.BIO_new_mem_buf(unsafe.Pointer(&der_block[0]),
+		C.int(len(der_block)))
+	cert := C.d2i_X509_bio(bio, nil)
+	C.BIO_free(bio)
+	if cert == nil {
+		return nil, errorFromErrorQueue()
+	}
+	x := &Certificate{x: cert}
+	runtime.SetFinalizer(x, func(x *Certificate) {
+		C.X509_free(x.x)
+	})
+	return x, nil
+}
+
 // MarshalPEM converts the X509 certificate to PEM-encoded format
 func (c *Certificate) MarshalPEM() (pem_block []byte, err error) {
 	bio := C.BIO_new(C.BIO_s_mem())
@@ -412,4 +464,112 @@ func (c *Certificate) SetVersion(version X509_Version) error {
 		return errors.New("failed to set certificate version")
 	}
 	return nil
+}
+
+type PKCS7 struct {
+	p7    *C.PKCS7
+	Certs []*Certificate
+}
+
+// LoadCertificatesFromPKCS7 loads certificates from a DER-encoded pkcs7.
+func LoadCertificatesFromPKCS7(der_block []byte) (*PKCS7, error) {
+	if len(der_block) == 0 {
+		return nil, errors.New("empty der block")
+	}
+	bio := C.BIO_new_mem_buf(unsafe.Pointer(&der_block[0]),
+		C.int(len(der_block)))
+	if bio == nil {
+		return nil, errors.New("failed creating bio")
+	}
+	defer C.BIO_free(bio)
+
+	var p7 *C.PKCS7
+	p7 = C.d2i_PKCS7_bio(bio, nil)
+	if p7 == nil {
+		return nil, errors.New("failed reading pkcs7 data")
+	}
+	ret := &PKCS7{
+		p7: p7,
+	}
+	runtime.SetFinalizer(ret, func(pkcs7 *PKCS7) {
+		C.PKCS7_free(pkcs7.p7)
+	})
+
+	var certs *C.struct_stack_st_X509
+	i := C.OBJ_obj2nid(p7._type)
+
+	// credit goes to Chris Bandy who referenced Alan Shen's article for this cgo representation of a union:
+	// https://sunzenshen.github.io/tutorials/2015/05/09/cgotchas-intro.html
+	switch i {
+	case C.NID_pkcs7_signed:
+		signed := *(**C.PKCS7_SIGNED)(unsafe.Pointer(&p7.d[0]))
+		certs = signed.cert
+	case C.NID_pkcs7_signedAndEnveloped:
+		signedAndEnveloped := *(**C.PKCS7_SIGN_ENVELOPE)(unsafe.Pointer(&p7.d[0]))
+		certs = signedAndEnveloped.cert
+	}
+
+	err := ret.loadCertificateStack(certs)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+// loadCertificateStack loads up a stack of x509 certificates into the PKCS7 struct.
+func (p *PKCS7) loadCertificateStack(sk *C.struct_stack_st_X509) error {
+	sk_num := int(C.X_sk_X509_num(sk))
+	p.Certs = make([]*Certificate, 0, sk_num)
+	for i := 0; i < sk_num; i++ {
+		x := C.X_sk_X509_value(sk, C.int(i))
+
+		// add a ref
+		if 1 != C.X_X509_add_ref(x) {
+			return errors.New("unable to add ref for X509")
+		}
+		cert := &Certificate{x: x}
+		runtime.SetFinalizer(cert, func(cert *Certificate) {
+			C.X509_free(cert.x)
+		})
+		p.Certs = append(p.Certs, cert)
+	}
+	return nil
+}
+
+// VerifyTrustAndGetIssuerCertificate takes a CertificateStore and verifies trust for the certificate.
+// The issuing certificate from the CertificateStore is returned if found.
+func (c *Certificate) VerifyTrustAndGetIssuerCertificate(store *CertificateStore) (*Certificate, VerifyResult, error) {
+	storeCtx := C.X509_STORE_CTX_new()
+	if storeCtx == nil {
+		return nil, 0, errors.New("failed to create new X509_STORE_CTX")
+	}
+	defer C.X509_STORE_CTX_free(storeCtx)
+
+	rc := C.X509_STORE_CTX_init(storeCtx, store.store, c.x, nil)
+	if rc == 0 {
+		return nil, 0, errors.New("unable to init X509_STORE_CTX")
+	}
+
+	i := C.X509_verify_cert(storeCtx)
+	var issuer *Certificate
+	verifyResult := Ok
+	if i != 1 {
+		verifyResult = VerifyResult(C.X509_STORE_CTX_get_error(storeCtx))
+	}
+
+	currentIssuer := C.X509_STORE_CTX_get0_current_issuer(storeCtx)
+	if currentIssuer != nil {
+		// need to clone the issuer cert so that it is not cleaned up when C.X509_STORE_CTX_free is called
+		ic := &Certificate{x: currentIssuer}
+		data, err := ic.MarshalPEM()
+		if err != nil {
+			return nil, 0, errors.New("error copying issuer cert")
+		}
+		issuer, err = LoadCertificateFromPEM(data)
+		if err != nil {
+			return nil, 0, errors.New("error loading issuer cert")
+		}
+	}
+
+	return issuer, verifyResult, nil
 }
