@@ -28,6 +28,11 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 #include <openssl/ec.h>
+#include <openssl/pkcs7.h>
+#include <openssl/objects.h>
+#include <openssl/obj_mac.h>
+#include <openssl/cms.h>
+#include <openssl/asn1.h>
 
 #ifndef SSL_MODE_RELEASE_BUFFERS
 #define SSL_MODE_RELEASE_BUFFERS 0
@@ -150,6 +155,8 @@ extern void X_EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *ctx, int padding);
 extern const EVP_CIPHER *X_EVP_CIPHER_CTX_cipher(EVP_CIPHER_CTX *ctx);
 extern int X_EVP_CIPHER_CTX_encrypting(const EVP_CIPHER_CTX *ctx);
 extern int X_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid);
+extern int X_EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int pad);
+extern int X_EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value);
 
 /* HMAC methods */
 extern size_t X_HMAC_size(const HMAC_CTX *e);

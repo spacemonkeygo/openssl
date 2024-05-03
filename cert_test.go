@@ -138,6 +138,63 @@ func TestCertGetNameEntry(t *testing.T) {
 	}
 }
 
+func TestCertIssueDate(t *testing.T) {
+	key, err := GenerateRSAKey(768)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := &CertificateInfo{
+		Serial:       big.NewInt(int64(1)),
+		Expires:      24 * time.Hour,
+		Country:      "US",
+		Organization: "Test",
+		CommonName:   "localhost",
+	}
+	cert, err := NewCertificate(info, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cert.SetIssueDate(0); err != nil {
+		t.Fatal(err)
+	}
+	issue, err := cert.GetIssueDate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if issue.IsZero() || issue.After(time.Now()) {
+		t.Fatalf("invalid issue date")
+	}
+}
+
+func TestCertExpireDate(t *testing.T) {
+	key, err := GenerateRSAKey(768)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := &CertificateInfo{
+		Serial:       big.NewInt(int64(1)),
+		Issued:       0,
+		Country:      "US",
+		Organization: "Test",
+		CommonName:   "localhost",
+	}
+	cert, err := NewCertificate(info, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cert.SetExpireDate(30 * time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	exp, err := cert.GetExpireDate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if exp.IsZero() || exp.Before(now) || exp.After(now.Add(30*time.Minute)) {
+		t.Fatalf("invalid expire date")
+	}
+}
+
 func TestCertVersion(t *testing.T) {
 	key, err := GenerateRSAKey(768)
 	if err != nil {
